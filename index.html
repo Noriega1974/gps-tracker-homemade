@@ -59,25 +59,72 @@
         </thead>
         <tbody id="dataBody"></tbody>
     </table>
+
     <script>
         var mapa = L.map('mapa').setView([10.9685, -74.7813], 13);
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
             attribution: '© OpenStreetMap contributors'
         }).addTo(mapa);
-        var marcador = null;
-        var ruta = L.polyline([], { color: '#e74c3c', weight: 3 }).addTo(mapa);
-        var puntos = [];
 
+        var marcador = null;
+        // La ruta ahora se dibuja por segmentos de carretera via OSRM
+        var rutaPolyline = L.polyline([], { color: '#e74c3c', weight: 4 }).addTo(mapa);
+        var ultimoPunto = null; // Guarda el último punto para pedir ruta al siguiente
+
+        // Consulta OSRM para obtener la ruta por carretera entre dos puntos
+        // Si OSRM falla, dibuja línea recta como fallback
+        function obtenerRutaOSRM(desde, hasta, callback) {
+            var url = 'https://router.project-osrm.org/route/v1/driving/' +
+                desde[1] + ',' + desde[0] + ';' +
+                hasta[1] + ',' + hasta[0] +
+                '?overview=full&geometries=geojson';
+
+            fetch(url)
+                .then(function(response) { return response.json(); })
+                .then(function(data) {
+                    if (data.code === 'Ok' && data.routes.length > 0) {
+                        // OSRM devuelve coordenadas en formato [lon, lat] — hay que invertirlas para Leaflet [lat, lon]
+                        var coords = data.routes[0].geometry.coordinates.map(function(c) {
+                            return [c[1], c[0]];
+                        });
+                        callback(coords);
+                    } else {
+                        // Fallback: línea recta si OSRM no encuentra ruta
+                        callback([desde, hasta]);
+                    }
+                })
+                .catch(function() {
+                    // Fallback: línea recta si hay error de red
+                    callback([desde, hasta]);
+                });
+        }
+
+        // Actualiza el mapa con la nueva coordenada usando routing OSRM
         function actualizarMapa(lat, lon) {
-            var latlng = [parseFloat(lat), parseFloat(lon)];
+            var nuevoPunto = [parseFloat(lat), parseFloat(lon)];
+
+            // Mover o crear el marcador
             if (!marcador) {
-                marcador = L.marker(latlng).addTo(mapa);
+                marcador = L.marker(nuevoPunto).addTo(mapa);
             } else {
-                marcador.setLatLng(latlng);
+                marcador.setLatLng(nuevoPunto);
             }
-            puntos.push(latlng);
-            ruta.setLatLngs(puntos);
-            mapa.setView(latlng, mapa.getZoom());
+
+            mapa.setView(nuevoPunto, mapa.getZoom());
+
+            // Si hay un punto anterior, pedir la ruta por carretera entre ambos
+            if (ultimoPunto) {
+                obtenerRutaOSRM(ultimoPunto, nuevoPunto, function(coordsRuta) {
+                    // Agregar los puntos de la ruta a la polyline existente
+                    var puntosActuales = rutaPolyline.getLatLngs();
+                    coordsRuta.forEach(function(p) {
+                        puntosActuales.push(p);
+                    });
+                    rutaPolyline.setLatLngs(puntosActuales);
+                });
+            }
+
+            ultimoPunto = nuevoPunto;
         }
 
         var todosLosDatos = [];
@@ -92,7 +139,6 @@
                 var espacio = str.split(' ');
                 return { fecha: espacio[0] || '-', hora: espacio[1] || '-' };
             }
-            // Ajuste a hora Colombia (UTC-5)
             var colombia = new Date(d.getTime() - (5 * 60 * 60 * 1000));
             var fecha = colombia.toISOString().split('T')[0];
             var hora = colombia.toISOString().split('T')[1].substring(0, 8);
@@ -164,36 +210,68 @@
             }
         }
 
+        // Carga el historial y reconstruye la ruta por carretera entre los puntos históricos
         function cargarHistorial() {
             var xhr = new XMLHttpRequest();
             xhr.open('GET', '/api/ubicaciones?limit=50');
             xhr.onload = function() {
                 if (xhr.status === 200) {
                     var data = JSON.parse(xhr.responseText);
-                    if (Array.isArray(data)) {
+                    if (Array.isArray(data) && data.length > 0) {
                         todosLosDatos = [];
                         var tbody = document.getElementById('dataBody');
                         tbody.innerHTML = '';
                         paqueteNum = 0;
-                        puntos = [];
-                        for (var i = data.length - 1; i >= 0; i--) {
+                        rutaPolyline.setLatLngs([]);
+
+                        // Invertir para procesar del más antiguo al más reciente
+                        var ordenado = data.slice().reverse();
+
+                        ordenado.forEach(function(d, i) {
                             paqueteNum++;
-                            data[i].numero = paqueteNum;
-                            todosLosDatos.unshift(data[i]);
-                            agregarFila(data[i]);
-                            puntos.push([parseFloat(data[i].latitud), parseFloat(data[i].longitud)]);
-                        }
-                        if (puntos.length > 0) {
-                            ruta.setLatLngs(puntos);
-                            var ultimo = puntos[puntos.length - 1];
-                            if (!marcador) {
-                                marcador = L.marker(ultimo).addTo(mapa);
-                            } else {
-                                marcador.setLatLng(ultimo);
+                            d.numero = paqueteNum;
+                            todosLosDatos.unshift(d);
+                            agregarFila(d);
+                        });
+
+                        // Reconstruir la ruta histórica por carretera
+                        // Se hace de forma secuencial para no saturar OSRM con muchas peticiones simultáneas
+                        function construirRutaHistorica(index) {
+                            if (index >= ordenado.length) {
+                                // Terminó — centrar mapa en el último punto
+                                var ultimo = [parseFloat(ordenado[ordenado.length - 1].latitud), parseFloat(ordenado[ordenado.length - 1].longitud)];
+                                if (!marcador) {
+                                    marcador = L.marker(ultimo).addTo(mapa);
+                                } else {
+                                    marcador.setLatLng(ultimo);
+                                }
+                                mapa.setView(ultimo, 15);
+                                ultimoPunto = ultimo;
+                                actualizarGPS(todosLosDatos[0]);
+                                return;
                             }
-                            mapa.setView(ultimo, 15);
-                            actualizarGPS(todosLosDatos[0]);
+
+                            var puntoActual = [parseFloat(ordenado[index].latitud), parseFloat(ordenado[index].longitud)];
+
+                            if (index === 0) {
+                                // Primer punto — solo agregar sin routing
+                                var pts = rutaPolyline.getLatLngs();
+                                pts.push(puntoActual);
+                                rutaPolyline.setLatLngs(pts);
+                                construirRutaHistorica(index + 1);
+                            } else {
+                                var puntoAnterior = [parseFloat(ordenado[index - 1].latitud), parseFloat(ordenado[index - 1].longitud)];
+                                obtenerRutaOSRM(puntoAnterior, puntoActual, function(coords) {
+                                    var pts = rutaPolyline.getLatLngs();
+                                    coords.forEach(function(p) { pts.push(p); });
+                                    rutaPolyline.setLatLngs(pts);
+                                    // Pequeña pausa para no saturar la API de OSRM
+                                    setTimeout(function() { construirRutaHistorica(index + 1); }, 200);
+                                });
+                            }
                         }
+
+                        construirRutaHistorica(0);
                         document.getElementById('contador').textContent = 'Paquetes capturados: ' + todosLosDatos.length;
                     }
                 }
