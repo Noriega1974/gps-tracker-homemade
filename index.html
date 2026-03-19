@@ -6,8 +6,6 @@
     <title>{{INSTANCE_NAME}}</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow+Condensed:wght@300;400;600;700&display=swap" rel="stylesheet">
     <style>
         body { font-family: Arial, sans-serif; padding: 20px; margin: 0 auto; }
         h1 { font-size: 18px; margin-bottom: 15px; }
@@ -27,47 +25,24 @@
     </style>
 </head>
 <body>
-
-<!-- TOP BAR -->
-<div id="topbar">
-    <div class="brand">▸ GPS TRACKER</div>
-    <div style="display:flex;align-items:center;gap:8px;">
-        <span id="status-dot"></span>
-        <span id="status-text">Conectando...</span>
+    <h1>GPS TRACKER </h1>
+    <div id="status" class="disconnected">Conectando al servidor...</div>
+    <div class="seccion">
+        <h2>DATOS GPS</h2>
+        <p>LATITUD: <span id="lat">Esperando...</span></p>
+        <p>LONGITUD: <span id="lng">Esperando...</span></p>
+        <p>FECHA: <span id="fecha">Esperando...</span></p>
+        <p>HORA: <span id="hora">Esperando...</span></p>
     </div>
-    <div class="topbar-actions">
-        <button class="btn-icon" id="btn-open-drawer">SNIFFER UDP ↗</button>
+    <hr>
+    <div class="seccion">
+        <h2>GEOLOCALIZACIÓN EN TIEMPO REAL</h2>
+        <div id="mapa"></div>
     </div>
-</div>
-
-<!-- MAIN -->
-<div id="main">
-
-    <!-- MAP (full area) -->
-    <div id="mapa"></div>
-
-    <!-- PACKET BADGE -->
-    <div id="packet-badge">PKT <span id="contador">0</span></div>
-
-    <!-- GPS DATA OVERLAY -->
-    <div id="gps-panel">
-        <div class="panel-title">GPS DATA</div>
-        <div class="gps-row">
-            <span class="gps-label">LAT</span>
-            <span class="gps-value highlight" id="lat">—</span>
-        </div>
-        <div class="gps-row">
-            <span class="gps-label">LNG</span>
-            <span class="gps-value highlight" id="lng">—</span>
-        </div>
-        <div class="gps-row">
-            <span class="gps-label">FECHA</span>
-            <span class="gps-value" id="fecha">—</span>
-        </div>
-        <div class="gps-row">
-            <span class="gps-label">HORA</span>
-            <span class="gps-value" id="hora">—</span>
-        </div>
+    <hr>
+    <div class="seccion">
+        <h2>SNIFFER UDP</h2>
+        <p id="contador">Paquetes capturados: 0</p>
     </div>
     <table>
         <thead>
@@ -83,96 +58,130 @@
         <tbody id="dataBody"></tbody>
     </table>
 
-<script>
-    /* ── MAP INIT ── */
-    var mapa = L.map('mapa', { zoomControl: true }).setView([10.9685, -74.7813], 13);
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        attribution: '© OpenStreetMap'
-    }).addTo(mapa);
+    <script>
+        var mapa = L.map('mapa').setView([10.9685, -74.7813], 13);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '© OpenStreetMap contributors'
+        }).addTo(mapa);
 
-    var marcador = null;
-    var rutaPolyline = L.polyline([], { color: '#00e5ff', weight: 3, opacity: .8 }).addTo(mapa);
-    var ultimoPunto = null;
+        var marcador = null;
+        // La ruta ahora se dibuja por segmentos de carretera via OSRM
+        var rutaPolyline = L.polyline([], { color: '#e74c3c', weight: 4 }).addTo(mapa);
+        var ultimoPunto = null; // Guarda el último punto para pedir ruta al siguiente
 
-    /* Custom icon */
-    var gpsIcon = L.divIcon({
-        className: '',
-        html: '<div style="width:14px;height:14px;border-radius:50%;background:#00e5ff;border:2px solid #fff;box-shadow:0 0 10px #00e5ff,0 0 20px #00e5ff88;"></div>',
-        iconSize: [14, 14],
-        iconAnchor: [7, 7]
-    });
+        // Consulta OSRM para obtener la ruta por carretera entre dos puntos
+        // Si OSRM falla, dibuja línea recta como fallback
+        function obtenerRutaOSRM(desde, hasta, callback) {
+            var url = 'https://router.project-osrm.org/route/v1/driving/' +
+                desde[1] + ',' + desde[0] + ';' +
+                hasta[1] + ',' + hasta[0] +
+                '?overview=full&geometries=geojson';
 
-    function obtenerRutaOSRM(desde, hasta, callback) {
-        var url = 'https://router.project-osrm.org/route/v1/driving/' +
-            desde[1] + ',' + desde[0] + ';' +
-            hasta[1] + ',' + hasta[0] +
-            '?overview=full&geometries=geojson';
-        fetch(url)
-            .then(r => r.json())
-            .then(data => {
-                if (data.code === 'Ok' && data.routes.length > 0) {
-                    var coords = data.routes[0].geometry.coordinates.map(c => [c[1], c[0]]);
-                    callback(coords);
-                } else { callback([desde, hasta]); }
-            })
-            .catch(() => callback([desde, hasta]));
-    }
-
-    function actualizarMapa(lat, lon) {
-        var nuevoPunto = [parseFloat(lat), parseFloat(lon)];
-        if (!marcador) {
-            marcador = L.marker(nuevoPunto, { icon: gpsIcon }).addTo(mapa);
-        } else {
-            marcador.setLatLng(nuevoPunto);
+            fetch(url)
+                .then(function(response) { return response.json(); })
+                .then(function(data) {
+                    if (data.code === 'Ok' && data.routes.length > 0) {
+                        // OSRM devuelve coordenadas en formato [lon, lat] — hay que invertirlas para Leaflet [lat, lon]
+                        var coords = data.routes[0].geometry.coordinates.map(function(c) {
+                            return [c[1], c[0]];
+                        });
+                        callback(coords);
+                    } else {
+                        // Fallback: línea recta si OSRM no encuentra ruta
+                        callback([desde, hasta]);
+                    }
+                })
+                .catch(function() {
+                    // Fallback: línea recta si hay error de red
+                    callback([desde, hasta]);
+                });
         }
-        mapa.setView(nuevoPunto, mapa.getZoom());
-        if (ultimoPunto) {
-            obtenerRutaOSRM(ultimoPunto, nuevoPunto, coordsRuta => {
-                var pts = rutaPolyline.getLatLngs();
-                coordsRuta.forEach(p => pts.push(p));
-                rutaPolyline.setLatLngs(pts);
-            });
+
+        // Actualiza el mapa con la nueva coordenada usando routing OSRM
+        function actualizarMapa(lat, lon) {
+            var nuevoPunto = [parseFloat(lat), parseFloat(lon)];
+
+            // Mover o crear el marcador
+            if (!marcador) {
+                marcador = L.marker(nuevoPunto).addTo(mapa);
+            } else {
+                marcador.setLatLng(nuevoPunto);
+            }
+
+            mapa.setView(nuevoPunto, mapa.getZoom());
+
+            // Si hay un punto anterior, pedir la ruta por carretera entre ambos
+            if (ultimoPunto) {
+                obtenerRutaOSRM(ultimoPunto, nuevoPunto, function(coordsRuta) {
+                    // Agregar los puntos de la ruta a la polyline existente
+                    var puntosActuales = rutaPolyline.getLatLngs();
+                    coordsRuta.forEach(function(p) {
+                        puntosActuales.push(p);
+                    });
+                    rutaPolyline.setLatLngs(puntosActuales);
+                });
+            }
+
+            ultimoPunto = nuevoPunto;
         }
-        ultimoPunto = nuevoPunto;
-    }
 
-    /* ── DRAWER TOGGLE ── */
-    document.getElementById('btn-open-drawer').addEventListener('click', () => {
-        document.getElementById('sniffer-drawer').classList.add('open');
-    });
-    document.getElementById('btn-close-drawer').addEventListener('click', () => {
-        document.getElementById('sniffer-drawer').classList.remove('open');
-    });
+        var todosLosDatos = [];
+        var paqueteNum = 0;
 
-    /* ── DATA ── */
-    var todosLosDatos = [];
-    var paqueteNum = 0;
-
-    function extraerFechaHora(timestamp) {
-        if (!timestamp) return { fecha: '-', hora: '-' };
-        var d = new Date(timestamp);
-        if (isNaN(d.getTime())) {
-            var espacio = String(timestamp).split(' ');
-            return { fecha: espacio[0] || '-', hora: espacio[1] || '-' };
+        // Convierte timestamp a hora Colombia (UTC-5)
+        function extraerFechaHora(timestamp) {
+            if (!timestamp) return { fecha: '-', hora: '-' };
+            var d = new Date(timestamp);
+            if (isNaN(d.getTime())) {
+                var str = String(timestamp);
+                var espacio = str.split(' ');
+                return { fecha: espacio[0] || '-', hora: espacio[1] || '-' };
+            }
+            var colombia = new Date(d.getTime() - (5 * 60 * 60 * 1000));
+            var fecha = colombia.toISOString().split('T')[0];
+            var hora = colombia.toISOString().split('T')[1].substring(0, 8);
+            return { fecha: fecha, hora: hora };
         }
-        var colombia = new Date(d.getTime() - (5 * 60 * 60 * 1000));
-        var fecha = colombia.toISOString().split('T')[0];
-        var hora = colombia.toISOString().split('T')[1].substring(0, 8);
-        return { fecha, hora };
-    }
 
-    function setContador(n) {
-        document.getElementById('contador').textContent = n;
-        document.getElementById('drawer-count').textContent = n;
-    }
+        function conectarWS() {
+            var protocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
+            var ws = new WebSocket(protocol + '//' + location.host);
 
-    function actualizarGPS(data) {
-        var fh = extraerFechaHora(data.timestamp_gps);
-        document.getElementById('lat').textContent = data.latitud;
-        document.getElementById('lng').textContent = data.longitud;
-        document.getElementById('fecha').textContent = fh.fecha;
-        document.getElementById('hora').textContent = fh.hora;
-    }
+            ws.onopen = function() {
+                document.getElementById('status').textContent = 'CONECTADO — Capturando paquetes...';
+                document.getElementById('status').className = 'connected';
+            };
+
+            ws.onmessage = function(event) {
+                var msg = JSON.parse(event.data);
+                if (msg.type === 'bienvenida') {
+                    cargarHistorial();
+                }
+                if (msg.type === 'nueva_ubicacion') {
+                    paqueteNum++;
+                    msg.data.numero = paqueteNum;
+                    todosLosDatos.unshift(msg.data);
+                    actualizarGPS(msg.data);
+                    actualizarMapa(msg.data.latitud, msg.data.longitud);
+                    agregarFila(msg.data);
+                    document.getElementById('contador').textContent = 'Paquetes capturados: ' + todosLosDatos.length;
+                }
+            };
+
+            ws.onclose = function() {
+                document.getElementById('status').textContent = 'DESCONECTADO — Reconectando en 3s...';
+                document.getElementById('status').className = 'disconnected';
+                setTimeout(conectarWS, 3000);
+            };
+        }
+
+        function actualizarGPS(data) {
+            var fh = extraerFechaHora(data.timestamp_gps);
+            document.getElementById('lat').textContent = data.latitud;
+            document.getElementById('lng').textContent = data.longitud;
+            document.getElementById('fecha').textContent = fh.fecha;
+            document.getElementById('hora').textContent = fh.hora;
+        }
 
         function agregarFila(data) {
             var tbody = document.getElementById('dataBody');
@@ -220,40 +229,52 @@
                             agregarFila(d);
                         });
 
-                    function construirRutaHistorica(index) {
-                        if (index >= ordenado.length) {
-                            var ultimo = [parseFloat(ordenado[ordenado.length - 1].latitud), parseFloat(ordenado[ordenado.length - 1].longitud)];
-                            if (!marcador) { marcador = L.marker(ultimo, { icon: gpsIcon }).addTo(mapa); }
-                            else { marcador.setLatLng(ultimo); }
-                            mapa.setView(ultimo, 15);
-                            ultimoPunto = ultimo;
-                            actualizarGPS(todosLosDatos[0]);
-                            return;
-                        }
-                        var puntoActual = [parseFloat(ordenado[index].latitud), parseFloat(ordenado[index].longitud)];
-                        if (index === 0) {
-                            rutaPolyline.getLatLngs().push(puntoActual);
-                            rutaPolyline.setLatLngs([puntoActual]);
-                            construirRutaHistorica(index + 1);
-                        } else {
-                            var puntoAnterior = [parseFloat(ordenado[index - 1].latitud), parseFloat(ordenado[index - 1].longitud)];
-                            obtenerRutaOSRM(puntoAnterior, puntoActual, coords => {
-                                var pts = rutaPolyline.getLatLngs();
-                                coords.forEach(p => pts.push(p));
-                                rutaPolyline.setLatLngs(pts);
-                                setTimeout(() => construirRutaHistorica(index + 1), 200);
-                            });
-                        }
-                    }
-                    construirRutaHistorica(0);
-                    setContador(todosLosDatos.length);
-                }
-            }
-        };
-        xhr.send();
-    }
+                        // Reconstruir la ruta histórica por carretera
+                        // Se hace de forma secuencial para no saturar OSRM con muchas peticiones simultáneas
+                        function construirRutaHistorica(index) {
+                            if (index >= ordenado.length) {
+                                // Terminó — centrar mapa en el último punto
+                                var ultimo = [parseFloat(ordenado[ordenado.length - 1].latitud), parseFloat(ordenado[ordenado.length - 1].longitud)];
+                                if (!marcador) {
+                                    marcador = L.marker(ultimo).addTo(mapa);
+                                } else {
+                                    marcador.setLatLng(ultimo);
+                                }
+                                mapa.setView(ultimo, 15);
+                                ultimoPunto = ultimo;
+                                actualizarGPS(todosLosDatos[0]);
+                                return;
+                            }
 
-    conectarWS();
-</script>
+                            var puntoActual = [parseFloat(ordenado[index].latitud), parseFloat(ordenado[index].longitud)];
+
+                            if (index === 0) {
+                                // Primer punto — solo agregar sin routing
+                                var pts = rutaPolyline.getLatLngs();
+                                pts.push(puntoActual);
+                                rutaPolyline.setLatLngs(pts);
+                                construirRutaHistorica(index + 1);
+                            } else {
+                                var puntoAnterior = [parseFloat(ordenado[index - 1].latitud), parseFloat(ordenado[index - 1].longitud)];
+                                obtenerRutaOSRM(puntoAnterior, puntoActual, function(coords) {
+                                    var pts = rutaPolyline.getLatLngs();
+                                    coords.forEach(function(p) { pts.push(p); });
+                                    rutaPolyline.setLatLngs(pts);
+                                    // Pequeña pausa para no saturar la API de OSRM
+                                    setTimeout(function() { construirRutaHistorica(index + 1); }, 200);
+                                });
+                            }
+                        }
+
+                        construirRutaHistorica(0);
+                        document.getElementById('contador').textContent = 'Paquetes capturados: ' + todosLosDatos.length;
+                    }
+                }
+            };
+            xhr.send();
+        }
+
+        conectarWS();
+    </script>
 </body>
 </html>
