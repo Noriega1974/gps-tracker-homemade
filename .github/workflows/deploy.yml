@@ -5,13 +5,46 @@ on:
     branches: [ main ]
 
 jobs:
-  deploy:
+  deploy-jose:
     runs-on: ubuntu-latest
     steps:
-      - name: Deploy via SSH
+      - name: Deploy EC2 Jose
         uses: appleboy/ssh-action@master
         with:
-          host: 174.129.193.166
+          host: gpstracker3.ddns.net
           username: ubuntu
           key: ${{ secrets.EC2_KEY }}
+          script: /home/ubuntu/deploy.sh
+
+  deploy-daniel:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deploy EC2 Daniel
+        uses: appleboy/ssh-action@master
+        with:
+          host: henriquezd.ddns.net
+          username: ubuntu
+          key: ${{ secrets.EC2_KEY_DANIEL }}
+          script: /home/ubuntu/deploy.sh
+
+  deploy-polo:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deploy EC2 Polo
+        uses: appleboy/ssh-action@master
+        with:
+          host: gps-tracker.ddns.net
+          username: ubuntu
+          key: ${{ secrets.EC2_KEY_POLO }}
+          script: /home/ubuntu/deploy.sh
+
+  deploy-ivan:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deploy EC2 Ivan
+        uses: appleboy/ssh-action@master
+        with:
+          host: barriosun.ddns.net
+          username: ubuntu
+          key: ${{ secrets.EC2_KEY_IVAN }}
           script: /home/ubuntu/deploy.sh
