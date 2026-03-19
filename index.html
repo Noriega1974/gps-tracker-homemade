@@ -9,281 +9,21 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow+Condensed:wght@300;400;600;700&display=swap" rel="stylesheet">
     <style>
-        :root {
-            --bg: #0b0e14;
-            --surface: #121620;
-            --border: #1e2635;
-            --accent: #00e5ff;
-            --accent2: #ff3b6b;
-            --text: #c8d6e5;
-            --muted: #4a5568;
-            --green: #00ff9d;
-        }
-
-        * { box-sizing: border-box; margin: 0; padding: 0; }
-
-        body {
-            font-family: 'Barlow Condensed', sans-serif;
-            background: var(--bg);
-            color: var(--text);
-            height: 100vh;
-            width: 100vw;
-            overflow: hidden;
-            display: flex;
-            flex-direction: column;
-        }
-
-        /* ── TOP BAR ── */
-        #topbar {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            padding: 0 18px;
-            height: 46px;
-            background: var(--surface);
-            border-bottom: 1px solid var(--border);
-            flex-shrink: 0;
-            z-index: 1000;
-        }
-
-        #topbar .brand {
-            font-family: 'Share Tech Mono', monospace;
-            font-size: 14px;
-            color: var(--accent);
-            letter-spacing: 3px;
-            text-transform: uppercase;
-        }
-
-        #status-dot {
-            display: inline-block;
-            width: 7px; height: 7px;
-            border-radius: 50%;
-            background: var(--accent2);
-            margin-right: 7px;
-            transition: background .4s;
-        }
-        #status-dot.connected { background: var(--green); box-shadow: 0 0 6px var(--green); animation: pulse 2s infinite; }
-
-        @keyframes pulse {
-            0%, 100% { opacity: 1; }
-            50% { opacity: .4; }
-        }
-
-        #status-text {
-            font-family: 'Share Tech Mono', monospace;
-            font-size: 11px;
-            color: var(--muted);
-            letter-spacing: 1px;
-        }
-
-        .topbar-actions { display: flex; gap: 10px; align-items: center; }
-
-        .btn-icon {
-            background: var(--border);
-            border: 1px solid var(--border);
-            color: var(--text);
-            font-family: 'Share Tech Mono', monospace;
-            font-size: 11px;
-            letter-spacing: 1px;
-            padding: 5px 12px;
-            cursor: pointer;
-            border-radius: 2px;
-            transition: all .2s;
-        }
-        .btn-icon:hover { background: var(--accent); color: var(--bg); border-color: var(--accent); }
-
-        /* ── MAIN LAYOUT ── */
-        #main {
-            display: flex;
-            flex: 1;
-            overflow: hidden;
-            position: relative;
-        }
-
-        /* ── MAP ── */
-        #mapa {
-            flex: 1;
-            height: 100%;
-            z-index: 1;
-        }
-
-        /* ── GPS OVERLAY PANEL (bottom-left of map) ── */
-        #gps-panel {
-            position: absolute;
-            bottom: 22px;
-            left: 16px;
-            z-index: 500;
-            background: rgba(18, 22, 32, 0.88);
-            border: 1px solid var(--border);
-            border-left: 3px solid var(--accent);
-            backdrop-filter: blur(8px);
-            padding: 12px 16px;
-            min-width: 210px;
-            border-radius: 2px;
-        }
-
-        #gps-panel .panel-title {
-            font-family: 'Share Tech Mono', monospace;
-            font-size: 9px;
-            color: var(--accent);
-            letter-spacing: 3px;
-            margin-bottom: 10px;
-            text-transform: uppercase;
-        }
-
-        .gps-row {
-            display: flex;
-            justify-content: space-between;
-            align-items: baseline;
-            gap: 12px;
-            margin-bottom: 5px;
-        }
-
-        .gps-label {
-            font-size: 10px;
-            color: var(--muted);
-            letter-spacing: 1px;
-            text-transform: uppercase;
-            flex-shrink: 0;
-        }
-
-        .gps-value {
-            font-family: 'Share Tech Mono', monospace;
-            font-size: 13px;
-            color: var(--text);
-            text-align: right;
-        }
-
-        .gps-value.highlight { color: var(--accent); }
-
-        /* ── PACKET COUNT BADGE ── */
-        #packet-badge {
-            position: absolute;
-            top: 16px;
-            left: 16px;
-            z-index: 500;
-            background: rgba(18, 22, 32, 0.85);
-            border: 1px solid var(--border);
-            border-left: 3px solid var(--accent2);
-            backdrop-filter: blur(8px);
-            padding: 7px 14px;
-            border-radius: 2px;
-            font-family: 'Share Tech Mono', monospace;
-            font-size: 11px;
-            color: var(--muted);
-        }
-
-        #packet-badge span { color: var(--accent2); font-size: 16px; vertical-align: middle; margin-left: 4px; }
-
-        /* ── SNIFFER DRAWER ── */
-        #sniffer-drawer {
-            position: absolute;
-            top: 0;
-            right: 0;
-            height: 100%;
-            width: 420px;
-            background: var(--surface);
-            border-left: 1px solid var(--border);
-            z-index: 600;
-            display: flex;
-            flex-direction: column;
-            transform: translateX(100%);
-            transition: transform .35s cubic-bezier(.4,0,.2,1);
-        }
-
-        #sniffer-drawer.open { transform: translateX(0); }
-
-        .drawer-header {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            padding: 0 16px;
-            height: 46px;
-            border-bottom: 1px solid var(--border);
-            flex-shrink: 0;
-        }
-
-        .drawer-title {
-            font-family: 'Share Tech Mono', monospace;
-            font-size: 11px;
-            color: var(--accent);
-            letter-spacing: 2px;
-        }
-
-        #btn-close-drawer {
-            background: none;
-            border: none;
-            color: var(--muted);
-            cursor: pointer;
-            font-size: 18px;
-            line-height: 1;
-            padding: 4px 6px;
-            border-radius: 2px;
-            transition: color .2s;
-        }
-        #btn-close-drawer:hover { color: var(--accent2); }
-
-        #drawer-counter {
-            padding: 8px 16px;
-            font-family: 'Share Tech Mono', monospace;
-            font-size: 10px;
-            color: var(--muted);
-            border-bottom: 1px solid var(--border);
-            flex-shrink: 0;
-        }
-
-        #drawer-counter em { color: var(--accent2); font-style: normal; }
-
-        .table-wrap {
-            flex: 1;
-            overflow-y: auto;
-            scrollbar-width: thin;
-            scrollbar-color: var(--border) transparent;
-        }
-
-        table {
-            width: 100%;
-            border-collapse: collapse;
-            font-size: 11px;
-        }
-
-        thead th {
-            background: var(--bg);
-            color: var(--muted);
-            font-family: 'Share Tech Mono', monospace;
-            font-size: 9px;
-            letter-spacing: 1px;
-            padding: 7px 8px;
-            text-align: left;
-            position: sticky;
-            top: 0;
-            border-bottom: 1px solid var(--border);
-        }
-
-        tbody td {
-            padding: 5px 8px;
-            border-bottom: 1px solid rgba(30,38,53,.6);
-            font-family: 'Share Tech Mono', monospace;
-            color: var(--text);
-            white-space: nowrap;
-        }
-
-        tbody tr:hover td { background: rgba(0,229,255,.04); color: var(--accent); }
-
-        tbody td:nth-child(5) { color: var(--accent2); }
-
-        /* Leaflet dark override */
-        .leaflet-tile { filter: brightness(.85) saturate(.7) hue-rotate(180deg) invert(1); }
-        .leaflet-container { background: #0b0e14; }
-        .leaflet-control-attribution { background: rgba(18,22,32,.7) !important; color: #4a5568 !important; font-size: 9px !important; }
-        .leaflet-control-zoom a { background: var(--surface) !important; color: var(--text) !important; border-color: var(--border) !important; }
-        .leaflet-control-zoom a:hover { background: var(--accent) !important; color: var(--bg) !important; }
-
-        /* ── RESPONSIVE ── */
-        @media (max-width: 600px) {
-            #sniffer-drawer { width: 100%; }
-            #gps-panel { min-width: 160px; }
-        }
+        body { font-family: Arial, sans-serif; padding: 20px; margin: 0 auto; }
+        h1 { font-size: 18px; margin-bottom: 15px; }
+        #status { margin-bottom: 15px; font-size: 14px; }
+        .connected { color: blue; }
+        .disconnected { color: red; }
+        .seccion { margin-bottom: 20px; }
+        .seccion h2 { font-size: 15px; margin-bottom: 8px; text-decoration: underline; }
+        p { font-size: 14px; margin: 4px 0; }
+        hr { margin: 15px 0; border: none; border-top: 1px solid #ccc; }
+        #mapa { width: 100%; height: 400px; margin-bottom: 10px; border: 1px solid #ccc; border-radius: 4px; }
+        table { width: 100%; border-collapse: collapse; font-size: 13px; }
+        th { background: #333; color: #fff; padding: 6px 8px; text-align: left; position: sticky; top: 0; }
+        td { padding: 4px 8px; border-bottom: 1px solid #ddd; }
+        tr:hover { background: #eef; }
+        #contador { font-size: 13px; color: #666; margin-bottom: 8px; }
     </style>
 </head>
 <body>
@@ -329,32 +69,19 @@
             <span class="gps-value" id="hora">—</span>
         </div>
     </div>
-
-    <!-- SNIFFER DRAWER -->
-    <div id="sniffer-drawer">
-        <div class="drawer-header">
-            <span class="drawer-title">SNIFFER UDP</span>
-            <button id="btn-close-drawer" title="Cerrar">✕</button>
-        </div>
-        <div id="drawer-counter">Paquetes capturados: <em id="drawer-count">0</em></div>
-        <div class="table-wrap">
-            <table>
-                <thead>
-                    <tr>
-                        <th>NO.</th>
-                        <th>FECHA</th>
-                        <th>HORA (COL)</th>
-                        <th>SOURCE</th>
-                        <th>PROTO</th>
-                        <th>INFO</th>
-                    </tr>
-                </thead>
-                <tbody id="dataBody"></tbody>
-            </table>
-        </div>
-    </div>
-
-</div>
+    <table>
+        <thead>
+            <tr>
+                <th>No.</th>
+                <th>Fecha</th>
+                <th>Time (COL)</th>
+                <th>Source</th>
+                <th>Protocol</th>
+                <th>Info</th>
+            </tr>
+        </thead>
+        <tbody id="dataBody"></tbody>
+    </table>
 
 <script>
     /* ── MAP INIT ── */
@@ -447,68 +174,51 @@
         document.getElementById('hora').textContent = fh.hora;
     }
 
-    function agregarFila(data) {
-        var tbody = document.getElementById('dataBody');
-        var row = document.createElement('tr');
-        var fh = extraerFechaHora(data.fecha_recepcion || data.timestamp_gps);
-        var source = (data.ip_origen || '-') + ':' + (data.puerto_origen || '-');
-        var destination = (data.ip_destino || '-') + ':' + (data.puerto_destino || '5005');
-        var info = source + ' → ' + destination;
-        row.innerHTML =
-            '<td>' + (data.numero || '-') + '</td>' +
-            '<td>' + fh.fecha + '</td>' +
-            '<td>' + fh.hora + '</td>' +
-            '<td>' + source + '</td>' +
-            '<td>UDP</td>' +
-            '<td>' + info + '</td>';
-        tbody.insertBefore(row, tbody.firstChild);
-        while (tbody.children.length > 200) tbody.removeChild(tbody.lastChild);
-    }
+        function agregarFila(data) {
+            var tbody = document.getElementById('dataBody');
+            var row = document.createElement('tr');
+            var fh = extraerFechaHora(data.fecha_recepcion || data.timestamp_gps);
+            var source = (data.ip_origen || '-') + ':' + (data.puerto_origen || '-');
+            var destination = (data.ip_destino || '-') + ':' + (data.puerto_destino || '5005');
+            var info = source + ' → ' + destination;
 
-    /* ── WEBSOCKET ── */
-    function conectarWS() {
-        var protocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
-        var ws = new WebSocket(protocol + '//' + location.host);
+            row.innerHTML =
+                '<td>' + (data.numero || '-') + '</td>' +
+                '<td>' + fh.fecha + '</td>' +
+                '<td>' + fh.hora + '</td>' +
+                '<td>' + source + '</td>' +
+                '<td>UDP</td>' +
+                '<td>' + info + '</td>';
 
-        ws.onopen = () => {
-            document.getElementById('status-dot').className = 'connected';
-            document.getElementById('status-text').textContent = 'EN LÍNEA';
-        };
-
-        ws.onmessage = event => {
-            var msg = JSON.parse(event.data);
-            if (msg.type === 'bienvenida') cargarHistorial();
-            if (msg.type === 'nueva_ubicacion') {
-                paqueteNum++;
-                msg.data.numero = paqueteNum;
-                todosLosDatos.unshift(msg.data);
-                actualizarGPS(msg.data);
-                actualizarMapa(msg.data.latitud, msg.data.longitud);
-                agregarFila(msg.data);
-                setContador(todosLosDatos.length);
+            tbody.insertBefore(row, tbody.firstChild);
+            while (tbody.children.length > 200) {
+                tbody.removeChild(tbody.lastChild);
             }
-        };
+        }
 
-        ws.onclose = () => {
-            document.getElementById('status-dot').className = '';
-            document.getElementById('status-text').textContent = 'DESCONECTADO — reconectando...';
-            setTimeout(conectarWS, 3000);
-        };
-    }
+        // Carga el historial y reconstruye la ruta por carretera entre los puntos históricos
+        function cargarHistorial() {
+            var xhr = new XMLHttpRequest();
+            xhr.open('GET', '/api/ubicaciones?limit=50');
+            xhr.onload = function() {
+                if (xhr.status === 200) {
+                    var data = JSON.parse(xhr.responseText);
+                    if (Array.isArray(data) && data.length > 0) {
+                        todosLosDatos = [];
+                        var tbody = document.getElementById('dataBody');
+                        tbody.innerHTML = '';
+                        paqueteNum = 0;
+                        rutaPolyline.setLatLngs([]);
 
-    function cargarHistorial() {
-        var xhr = new XMLHttpRequest();
-        xhr.open('GET', '/api/ubicaciones?limit=50');
-        xhr.onload = () => {
-            if (xhr.status === 200) {
-                var data = JSON.parse(xhr.responseText);
-                if (Array.isArray(data) && data.length > 0) {
-                    todosLosDatos = [];
-                    document.getElementById('dataBody').innerHTML = '';
-                    paqueteNum = 0;
-                    rutaPolyline.setLatLngs([]);
-                    var ordenado = data.slice().reverse();
-                    ordenado.forEach((d, i) => { paqueteNum++; d.numero = paqueteNum; todosLosDatos.unshift(d); agregarFila(d); });
+                        // Invertir para procesar del más antiguo al más reciente
+                        var ordenado = data.slice().reverse();
+
+                        ordenado.forEach(function(d, i) {
+                            paqueteNum++;
+                            d.numero = paqueteNum;
+                            todosLosDatos.unshift(d);
+                            agregarFila(d);
+                        });
 
                     function construirRutaHistorica(index) {
                         if (index >= ordenado.length) {
