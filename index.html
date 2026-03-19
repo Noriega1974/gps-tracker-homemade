@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{{INSTANCE_NAME}}</title>
+    <title>GPS Tracker - UDP</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <style>
@@ -51,8 +51,8 @@
                 <th>Fecha</th>
                 <th>Time (COL)</th>
                 <th>Source</th>
-                <th>Destination</th>
                 <th>Protocol</th>
+                <th>Length</th>
                 <th>Info</th>
             </tr>
         </thead>
@@ -190,15 +190,16 @@
             var fh = extraerFechaHora(data.fecha_recepcion || data.timestamp_gps);
             var source = (data.ip_origen || '-') + ':' + (data.puerto_origen || '-');
             var destination = (data.ip_destino || '-') + ':' + (data.puerto_destino || '5005');
-            var info = source + ' → ' + destination;
+            var bytes = data.longitud_bytes || '-';
+            var info = source + ' → ' + destination + ' Len=' + bytes;
 
             row.innerHTML =
                 '<td>' + (data.numero || '-') + '</td>' +
                 '<td>' + fh.fecha + '</td>' +
                 '<td>' + fh.hora + '</td>' +
                 '<td>' + source + '</td>' +
-                '<td>' + destination + '</td>' +
                 '<td>UDP</td>' +
+                '<td>' + bytes + '</td>' +
                 '<td>' + info + '</td>';
 
             tbody.insertBefore(row, tbody.firstChild);
