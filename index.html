@@ -7,7 +7,7 @@
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <style>
-        body { font-family: Arial, sans-serif; padding: 20px; margin: 0 auto; background-color: #FFF6F5; }
+        body { font-family: Arial, sans-serif; padding: 20px; margin: 0 auto; }
         h1 { font-size: 18px; margin-bottom: 15px; }
         #status { margin-bottom: 15px; font-size: 14px; }
         .connected { color: green; }
@@ -53,7 +53,6 @@
                 <th>Source</th>
                 <th>Destination</th>
                 <th>Protocol</th>
-                <th>Length</th>
                 <th>Info</th>
             </tr>
         </thead>
@@ -191,8 +190,7 @@
             var fh = extraerFechaHora(data.fecha_recepcion || data.timestamp_gps);
             var source = (data.ip_origen || '-') + ':' + (data.puerto_origen || '-');
             var destination = (data.ip_destino || '-') + ':' + (data.puerto_destino || '5005');
-            var bytes = data.longitud_bytes || '-';
-            var info = source + ' → ' + destination + ' Len=' + bytes;
+            var info = source + ' → ' + destination;
 
             row.innerHTML =
                 '<td>' + (data.numero || '-') + '</td>' +
@@ -201,7 +199,6 @@
                 '<td>' + source + '</td>' +
                 '<td>' + destination + '</td>' +
                 '<td>UDP</td>' +
-                '<td>' + bytes + '</td>' +
                 '<td>' + info + '</td>';
 
             tbody.insertBefore(row, tbody.firstChild);
