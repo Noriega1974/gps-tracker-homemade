@@ -126,6 +126,15 @@ function iniciarWeb() {
     const server = http.createServer(app);
     wss = new WebSocket.Server({ server: server });
 
+    const fs = require('fs');
+    const instanceName = process.env.INSTANCE_NAME || 'GPS Tracker';
+
+    app.get('/', function(req, res) {
+        const html = fs.readFileSync(path.join(__dirname, 'public/index.html'), 'utf8')
+            .replace('{{INSTANCE_NAME}}', instanceName);
+        res.send(html);
+    });
+
     app.use(express.static(path.join(__dirname, 'public')));
 
     app.get('/api/ubicaciones', async function(req, res) {
