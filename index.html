@@ -417,6 +417,7 @@ function setTheme(t) {
     }
     if (rutaPolyline) rutaPolyline.setStyle({ color: getCS('--route') });
     if (rutaHistPolyline) rutaHistPolyline.setStyle({ color: getCS('--route') });
+    if (marcador) marcador.setIcon(crearIcono());
 }
 function toggleTheme() { setTheme(currentTheme === 'light' ? 'dark' : 'light'); }
 function getCS(v) { return getComputedStyle(document.documentElement).getPropertyValue(v).trim(); }
@@ -438,7 +439,7 @@ function showView(name, el) {
     if (window.innerWidth <= 768) toggleSidebar();
     if (name === 'historical' && !mapaHistInit) {
         setTimeout(function() {
-            mapaHist = L.map('mapaHist').setView([10.9685, -74.7813], 13);
+            mapaHist = L.map('mapaHist').setView(ultimoPunto || [10.9685, -74.7813], 13);
             L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '&copy; OpenStreetMap' }).addTo(mapaHist);
             rutaHistPolyline = L.polyline([], { color: getCS('--route'), weight: 4 }).addTo(mapaHist);
             mapaHistInit = true;
@@ -456,6 +457,39 @@ var marcador = null;
 var rutaPolyline = L.polyline([], { color: getCS('--route'), weight: 4 }).addTo(mapa);
 var ultimoPunto = null;
 
+function crearIcono() {
+    var color = getCS('--accent');
+    return L.divIcon({
+        className: '',
+        html: '<svg width="32" height="42" viewBox="0 0 32 42" xmlns="http://www.w3.org/2000/svg">' +
+              '<path d="M16 0C7.163 0 0 7.163 0 16c0 12 16 26 16 26s16-14 16-26C32 7.163 24.837 0 16 0z" fill="'+color+'"/>' +
+              '<circle cx="16" cy="15" r="7" fill="white"/>' +
+              '<circle cx="16" cy="15" r="3" fill="'+color+'"/>' +
+              '</svg>',
+        iconSize: [32, 42],
+        iconAnchor: [16, 42],
+        popupAnchor: [0, -42]
+    });
+}
+
+/* Cargar ultima posicion inmediatamente al abrir la pagina */
+function cargarUltimaPosicion() {
+    fetch('/api/ubicaciones?limit=1')
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+            if (Array.isArray(data) && data.length > 0) {
+                var d = data[0];
+                var p = [parseFloat(d.latitud), parseFloat(d.longitud)];
+                marcador = L.marker(p, {icon: crearIcono()}).addTo(mapa);
+                mapa.setView(p, 15);
+                ultimoPunto = p;
+                actualizarGPS(d);
+            }
+        })
+        .catch(function() { /* si falla, se queda en Barranquilla por defecto */ });
+}
+cargarUltimaPosicion();
+
 function limpiarRuta() {
     rutaPolyline.setLatLngs([]);
     ultimoPunto = null;
@@ -472,7 +506,7 @@ function obtenerRutaOSRM(desde, hasta, cb) {
 }
 function actualizarMapa(lat,lon){
     var p=[parseFloat(lat),parseFloat(lon)];
-    if(!marcador){marcador=L.marker(p).addTo(mapa);}else{marcador.setLatLng(p);}
+    if(!marcador){marcador=L.marker(p,{icon:crearIcono()}).addTo(mapa);}else{marcador.setLatLng(p);}
     mapa.setView(p,mapa.getZoom());
     if(ultimoPunto){
         obtenerRutaOSRM(ultimoPunto,p,function(coords){
@@ -541,12 +575,14 @@ function cargarHistorial(){
             if(Array.isArray(data)&&data.length>0){
                 todosLosDatos=[];document.getElementById('dataBody').innerHTML='';
                 paqueteNum=0;rutaPolyline.setLatLngs([]);
+                if(marcador){mapa.removeLayer(marcador);marcador=null;}
+                ultimoPunto=null;
                 var ord=data.slice().reverse();
                 ord.forEach(function(d){paqueteNum++;d.numero=paqueteNum;todosLosDatos.unshift(d);agregarFila(d);});
                 function buildR(i){
                     if(i>=ord.length){
                         var u=[parseFloat(ord[ord.length-1].latitud),parseFloat(ord[ord.length-1].longitud)];
-                        if(!marcador)marcador=L.marker(u).addTo(mapa);else marcador.setLatLng(u);
+                        if(!marcador)marcador=L.marker(u,{icon:crearIcono()}).addTo(mapa);else marcador.setLatLng(u);
                         mapa.setView(u,15);ultimoPunto=u;actualizarGPS(todosLosDatos[0]);return;
                     }
                     var pt=[parseFloat(ord[i].latitud),parseFloat(ord[i].longitud)];
@@ -586,7 +622,7 @@ function cargarHistorico(){
                 function buildH(i){
                     if(i>=ord.length){
                         var last=[parseFloat(ord[ord.length-1].latitud),parseFloat(ord[ord.length-1].longitud)];
-                        L.marker(last).addTo(mapaHist);mapaHist.setView(last,14);return;
+                        L.marker(last,{icon:crearIcono()}).addTo(mapaHist);mapaHist.setView(last,14);return;
                     }
                     var pt=[parseFloat(ord[i].latitud),parseFloat(ord[i].longitud)];
                     if(i===0){rutaHistPolyline.addLatLng(pt);buildH(i+1);}
