@@ -1,280 +1,611 @@
 <!DOCTYPE html>
-<html lang="es">
+<html lang="es" data-theme="light">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{{INSTANCE_NAME}}</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
     <style>
-        body { font-family: Arial, sans-serif; padding: 20px; margin: 0 auto; background-color: #2d572c;}
-        h1 { font-size: 18px; margin-bottom: 15px; }
-        #status { margin-bottom: 15px; font-size: 14px; }
-        .connected { color: blue; }
-        .disconnected { color: red; }
-        .seccion { margin-bottom: 20px; }
-        .seccion h2 { font-size: 15px; margin-bottom: 8px; text-decoration: underline; }
-        p { font-size: 14px; margin: 4px 0; }
-        hr { margin: 15px 0; border: none; border-top: 1px solid #ccc; }
-        #mapa { width: 100%; height: 400px; margin-bottom: 10px; border: 1px solid #ccc; border-radius: 4px; }
+        /* ========== VARIABLES ========== */
+        :root { --sidebar-w: 260px; --t: 300ms; }
+
+        [data-theme="light"] {
+            --bg1: #FAFAF5; --bg2: #F0EDE3; --bg-card: #FFFFFF; --bg-input: #F5F3EC;
+            --brd: #D3D1C7; --brd-lt: #E8E6DD;
+            --txt1: #1A1A18; --txt2: #6B6B5E; --txt3: #9B9B8E;
+            --accent: #0D9488; --accent-h: #0B7E73; --accent-lt: rgba(13,148,136,0.1);
+            --route: #0D9488; --marker: #F97316; --alert: #EF4444;
+            --side-bg: linear-gradient(180deg, #0D9488 0%, #0B7E73 100%);
+            --side-txt: #fff; --side-hov: rgba(255,255,255,0.15); --side-act: rgba(255,255,255,0.25);
+            --side-sec: rgba(255,255,255,0.6);
+            --sh-sm: 0 1px 3px rgba(0,0,0,0.06); --sh-md: 0 4px 16px rgba(0,0,0,0.08);
+            --status-on: #10B981; --status-off: #EF4444;
+        }
+        [data-theme="dark"] {
+            --bg1: #1A1A2E; --bg2: #16213E; --bg-card: #16213E; --bg-input: #0F3460;
+            --brd: #2D2D44; --brd-lt: #252540;
+            --txt1: #E0E3F0; --txt2: #8888AA; --txt3: #5E5E7A;
+            --accent: #E94560; --accent-h: #D63B55; --accent-lt: rgba(233,69,96,0.1);
+            --route: #E94560; --marker: #F5A623; --alert: #EF4444;
+            --side-bg: linear-gradient(180deg, #16213E 0%, #0F3460 100%);
+            --side-txt: #E0E3F0; --side-hov: rgba(233,69,96,0.15); --side-act: rgba(233,69,96,0.25);
+            --side-sec: #8888AA;
+            --sh-sm: 0 1px 3px rgba(0,0,0,0.3); --sh-md: 0 4px 16px rgba(0,0,0,0.4);
+            --status-on: #34D399; --status-off: #F87171;
+        }
+
+        /* ========== RESET ========== */
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Outfit', sans-serif;
+            background: var(--bg1); color: var(--txt1);
+            display: flex; min-height: 100vh;
+            transition: background var(--t), color var(--t);
+        }
+
+        /* ========== SIDEBAR ========== */
+        .sidebar {
+            width: var(--sidebar-w); min-height: 100vh;
+            background: var(--side-bg); color: var(--side-txt);
+            position: fixed; left: 0; top: 0; bottom: 0; z-index: 100;
+            display: flex; flex-direction: column;
+            transition: transform 0.3s ease;
+            overflow-y: auto;
+        }
+        .sidebar.closed { transform: translateX(calc(-1 * var(--sidebar-w))); }
+
+        .side-header {
+            padding: 24px 20px 16px;
+            border-bottom: 1px solid rgba(255,255,255,0.12);
+        }
+        .side-logo { display: flex; align-items: center; gap: 12px; }
+        .side-logo-icon {
+            width: 38px; height: 38px; border-radius: 10px;
+            background: rgba(255,255,255,0.2);
+            display: flex; align-items: center; justify-content: center; font-size: 18px;
+        }
+        .side-logo-text h1 { font-size: 16px; font-weight: 700; letter-spacing: -0.3px; }
+        .side-logo-text span { font-size: 11px; opacity: 0.7; }
+
+        .side-section { padding: 16px 12px 4px; }
+        .side-section-title {
+            font-size: 10px; font-weight: 600; text-transform: uppercase;
+            letter-spacing: 1.5px; color: var(--side-sec); padding: 0 8px; margin-bottom: 6px;
+        }
+        .side-item {
+            display: flex; align-items: center; gap: 12px;
+            padding: 10px 14px; border-radius: 10px; cursor: pointer;
+            font-size: 14px; font-weight: 500;
+            transition: background 0.2s; text-decoration: none; color: inherit; margin-bottom: 2px;
+        }
+        .side-item:hover { background: var(--side-hov); }
+        .side-item.active { background: var(--side-act); font-weight: 600; }
+        .side-item svg { width: 20px; height: 20px; flex-shrink: 0; }
+
+        .side-footer {
+            margin-top: auto; padding: 16px 12px;
+            border-top: 1px solid rgba(255,255,255,0.12);
+        }
+        .theme-toggle {
+            display: flex; align-items: center; gap: 10px;
+            padding: 10px 14px; border-radius: 10px; cursor: pointer;
+            font-size: 13px; font-weight: 500;
+            transition: background 0.2s; border: none; background: none;
+            color: inherit; width: 100%;
+        }
+        .theme-toggle:hover { background: var(--side-hov); }
+        .theme-toggle svg { width: 20px; height: 20px; }
+
+        /* ========== HAMBURGER ========== */
+        .hamburger {
+            display: none; position: fixed; top: 14px; left: 14px; z-index: 200;
+            width: 42px; height: 42px; border-radius: 10px;
+            background: var(--accent); color: #fff; border: none; cursor: pointer;
+            font-size: 20px; align-items: center; justify-content: center;
+            box-shadow: var(--sh-md); transition: background var(--t);
+        }
+
+        /* ========== MAIN ========== */
+        .main {
+            margin-left: var(--sidebar-w); flex: 1;
+            padding: 28px 32px; min-height: 100vh;
+            transition: margin-left 0.3s ease;
+        }
+
+        /* ========== VIEWS ========== */
+        .view { display: none; animation: fadeIn 0.3s ease; }
+        .view.active { display: block; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+
+        .view-title {
+            font-size: 22px; font-weight: 700; margin-bottom: 20px;
+            display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+        }
+
+        /* ========== STATUS ========== */
+        .status-badge {
+            display: inline-flex; align-items: center; gap: 6px;
+            padding: 5px 14px; border-radius: 20px; font-size: 12px; font-weight: 600;
+        }
+        .status-badge.on { background: rgba(16,185,129,0.12); color: var(--status-on); }
+        .status-badge.off { background: rgba(239,68,68,0.12); color: var(--status-off); }
+        .status-dot { width: 7px; height: 7px; border-radius: 50%; animation: pulse 2s infinite; }
+        .status-badge.on .status-dot { background: var(--status-on); }
+        .status-badge.off .status-dot { background: var(--status-off); }
+        @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.4; } }
+
+        /* ========== CARDS ========== */
+        .card {
+            background: var(--bg-card); border: 1px solid var(--brd);
+            border-radius: 14px; padding: 20px; margin-bottom: 16px;
+            box-shadow: var(--sh-sm); transition: background var(--t), border var(--t);
+        }
+        .card-title {
+            font-size: 13px; font-weight: 600; color: var(--txt2);
+            text-transform: uppercase; letter-spacing: 1px; margin-bottom: 14px;
+            display: flex; align-items: center; gap: 8px;
+        }
+        .card-title::before {
+            content: ''; width: 3px; height: 16px; border-radius: 2px; background: var(--accent);
+        }
+
+        /* ========== MAP ========== */
+        #mapa, #mapaHist {
+            width: 100%; height: 420px; border-radius: 12px;
+            border: 1px solid var(--brd); overflow: hidden;
+        }
+
+        /* ========== GPS GRID ========== */
+        .gps-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+        .gps-item {
+            display: flex; justify-content: space-between; align-items: center;
+            padding: 12px 16px; background: var(--bg-input);
+            border-radius: 10px; border: 1px solid var(--brd-lt); transition: background var(--t);
+        }
+        .gps-item-label { font-size: 13px; color: var(--txt2); font-weight: 500; }
+        .gps-item-value {
+            font-family: 'JetBrains Mono', monospace; font-size: 13px;
+            font-weight: 500; color: var(--accent);
+        }
+
+        /* ========== BUTTONS ========== */
+        .btn-accent {
+            width: 100%; padding: 13px; border: none; border-radius: 10px;
+            background: var(--accent); color: #fff; font-family: 'Outfit', sans-serif;
+            font-size: 14px; font-weight: 600; cursor: pointer;
+            transition: background 0.2s, transform 0.1s;
+            display: flex; align-items: center; justify-content: center; gap: 8px;
+        }
+        .btn-accent:hover { background: var(--accent-h); }
+        .btn-accent:active { transform: scale(0.98); }
+
+        /* ========== TABLE ========== */
+        .table-wrap {
+            overflow-x: auto; border-radius: 10px;
+            border: 1px solid var(--brd); max-height: 500px; overflow-y: auto;
+        }
         table { width: 100%; border-collapse: collapse; font-size: 13px; }
-        th { background: #333; color: #fff; padding: 6px 8px; text-align: left; position: sticky; top: 0; }
-        td { padding: 4px 8px; border-bottom: 1px solid #ddd; }
-        tr:hover { background: #eef; }
-        #contador { font-size: 13px; color: #666; margin-bottom: 8px; }
+        th {
+            background: var(--bg-input); color: var(--txt2); padding: 10px 14px;
+            text-align: left; font-weight: 600; font-size: 11px;
+            text-transform: uppercase; letter-spacing: 0.8px;
+            position: sticky; top: 0; z-index: 2;
+            border-bottom: 1px solid var(--brd); transition: background var(--t), color var(--t);
+        }
+        td {
+            padding: 9px 14px; border-bottom: 1px solid var(--brd-lt);
+            font-family: 'JetBrains Mono', monospace; font-size: 12px;
+            color: var(--txt1); transition: color var(--t);
+        }
+        tr:hover td { background: var(--accent-lt); }
+        .proto-badge {
+            display: inline-block; padding: 2px 8px; border-radius: 4px;
+            background: var(--accent-lt); color: var(--accent); font-weight: 600; font-size: 11px;
+        }
+        .pkt-count { font-size: 13px; color: var(--txt2); margin-bottom: 12px; font-weight: 500; }
+
+        /* ========== TRACKER CARDS ========== */
+        .tracker-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+        .tracker-card {
+            display: flex; align-items: center; gap: 14px;
+            padding: 16px 18px; background: var(--bg-card);
+            border: 1px solid var(--brd); border-radius: 12px;
+            cursor: pointer; text-decoration: none; color: var(--txt1);
+            transition: all 0.2s; box-shadow: var(--sh-sm);
+        }
+        .tracker-card:hover {
+            border-color: var(--accent); transform: translateY(-2px); box-shadow: var(--sh-md);
+        }
+        .tracker-avatar {
+            width: 44px; height: 44px; border-radius: 50%;
+            background: var(--accent-lt); display: flex;
+            align-items: center; justify-content: center;
+            font-weight: 700; font-size: 16px; color: var(--accent); flex-shrink: 0;
+        }
+        .tracker-info h3 { font-size: 14px; font-weight: 600; }
+        .tracker-info span { font-size: 12px; color: var(--txt2); }
+
+        /* ========== RESPONSIVE ========== */
+        @media (max-width: 768px) {
+            .sidebar { transform: translateX(calc(-1 * var(--sidebar-w))); }
+            .sidebar.open { transform: translateX(0); }
+            .hamburger { display: flex; }
+            .main { margin-left: 0; padding: 70px 16px 24px; }
+            .gps-grid, .tracker-grid { grid-template-columns: 1fr; }
+            #mapa, #mapaHist { height: 300px; }
+        }
+        .overlay {
+            display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.4); z-index: 90;
+        }
+        .overlay.show { display: block; }
+
+        /* ========== DARK MAP ========== */
+        [data-theme="dark"] .leaflet-tile-pane { filter: brightness(0.7) contrast(1.1) saturate(0.8); }
+        [data-theme="dark"] .leaflet-control-zoom a {
+            background: var(--bg2) !important; color: var(--txt1) !important; border-color: var(--brd) !important;
+        }
     </style>
 </head>
 <body>
-    <h1>GPS TRACKER </h1>
-    <div id="status" class="disconnected">Conectando al servidor...</div>
-    <div class="seccion">
-        <h2>DATOS GPS</h2>
-        <p>LATITUD: <span id="lat">Esperando...</span></p>
-        <p>LONGITUD: <span id="lng">Esperando...</span></p>
-        <p>FECHA: <span id="fecha">Esperando...</span></p>
-        <p>HORA: <span id="hora">Esperando...</span></p>
+
+<!-- HAMBURGER -->
+<button class="hamburger" onclick="toggleSidebar()">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" width="22" height="22">
+        <line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/>
+    </svg>
+</button>
+<div class="overlay" id="overlay" onclick="toggleSidebar()"></div>
+
+<!-- SIDEBAR -->
+<nav class="sidebar" id="sidebar">
+    <div class="side-header">
+        <div class="side-logo">
+            <div class="side-logo-icon">&#x1F4E1;</div>
+            <div class="side-logo-text">
+                <h1>GPS Tracker</h1>
+                <span>Real-Time System</span>
+            </div>
+        </div>
     </div>
-    <hr>
-    <div class="seccion">
-        <h2>GEOLOCALIZACIÓN EN TIEMPO REAL</h2>
-        <div id="mapa"></div>
+
+    <div class="side-section">
+        <div class="side-section-title">Vistas</div>
+        <div class="side-item active" onclick="showView('realtime', this)">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+            Real-Time
+        </div>
+        <div class="side-item" onclick="showView('historical', this)">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 3v18h18"/><polyline points="18 9 12 15 9 12 3 18"/></svg>
+            Historical View
+        </div>
+        <div class="side-item" onclick="showView('sniffer', this)">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+            Sniffer UDP
+        </div>
     </div>
-    <hr>
-    <div class="seccion">
-        <h2>SNIFFER UDP</h2>
-        <p id="contador">Paquetes capturados: 0</p>
+
+    <div class="side-section">
+        <div class="side-section-title">Rastreadores</div>
+        <a class="side-item" href="https://gpstracker3.ddns.net" target="_blank">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="5" y="2" width="14" height="20" rx="2"/><line x1="12" y1="18" x2="12" y2="18.01"/></svg>
+            Jose Noriega
+        </a>
+        <a class="side-item" href="https://henriquezd.ddns.net" target="_blank">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="5" y="2" width="14" height="20" rx="2"/><line x1="12" y1="18" x2="12" y2="18.01"/></svg>
+            Daniel Henriquez
+        </a>
+        <a class="side-item" href="https://gps-tracker.ddns.net" target="_blank">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="5" y="2" width="14" height="20" rx="2"/><line x1="12" y1="18" x2="12" y2="18.01"/></svg>
+            Juan Polo
+        </a>
+        <a class="side-item" href="https://barriosun.ddns.net" target="_blank">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="5" y="2" width="14" height="20" rx="2"/><line x1="12" y1="18" x2="12" y2="18.01"/></svg>
+            Ivan Barrios
+        </a>
     </div>
-    <table>
-        <thead>
-            <tr>
-                <th>No.</th>
-                <th>Fecha</th>
-                <th>Time (COL)</th>
-                <th>Source</th>
-                <th>Protocol</th>
-                <th>Info</th>
-            </tr>
-        </thead>
-        <tbody id="dataBody"></tbody>
-    </table>
 
-    <script>
-        var mapa = L.map('mapa').setView([10.9685, -74.7813], 13);
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            attribution: '© OpenStreetMap contributors'
-        }).addTo(mapa);
+    <div class="side-footer">
+        <button class="theme-toggle" onclick="toggleTheme()">
+            <svg id="themeIcon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" width="20" height="20">
+                <circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>
+            </svg>
+            <span id="themeLabel">Modo Noche</span>
+        </button>
+    </div>
+</nav>
 
-        var marcador = null;
-        // La ruta ahora se dibuja por segmentos de carretera via OSRM
-        var rutaPolyline = L.polyline([], { color: '#e74c3c', weight: 4 }).addTo(mapa);
-        var ultimoPunto = null; // Guarda el último punto para pedir ruta al siguiente
+<!-- MAIN -->
+<div class="main" id="main">
 
-        // Consulta OSRM para obtener la ruta por carretera entre dos puntos
-        // Si OSRM falla, dibuja línea recta como fallback
-        function obtenerRutaOSRM(desde, hasta, callback) {
-            var url = 'https://router.project-osrm.org/route/v1/driving/' +
-                desde[1] + ',' + desde[0] + ';' +
-                hasta[1] + ',' + hasta[0] +
-                '?overview=full&geometries=geojson';
+    <!-- VIEW: REAL-TIME -->
+    <div class="view active" id="view-realtime">
+        <div class="view-title">
+            <span>Ubicacion en Tiempo Real</span>
+            <span class="status-badge off" id="statusBadge"><span class="status-dot"></span><span id="statusText">Desconectado</span></span>
+        </div>
+        <div class="card" style="padding:0;overflow:hidden;">
+            <div id="mapa"></div>
+        </div>
+        <div class="card">
+            <div class="card-title">Posicion Actual</div>
+            <div class="gps-grid">
+                <div class="gps-item">
+                    <span class="gps-item-label">Latitud</span>
+                    <span class="gps-item-value" id="lat">---</span>
+                </div>
+                <div class="gps-item">
+                    <span class="gps-item-label">Longitud</span>
+                    <span class="gps-item-value" id="lng">---</span>
+                </div>
+                <div class="gps-item">
+                    <span class="gps-item-label">Fecha</span>
+                    <span class="gps-item-value" id="fecha">---</span>
+                </div>
+                <div class="gps-item">
+                    <span class="gps-item-label">Hora (COL)</span>
+                    <span class="gps-item-value" id="hora">---</span>
+                </div>
+            </div>
+        </div>
+        <button class="btn-accent" onclick="limpiarRuta()">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" width="18" height="18"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+            Limpiar Trayectoria
+        </button>
+    </div>
 
-            fetch(url)
-                .then(function(response) { return response.json(); })
-                .then(function(data) {
-                    if (data.code === 'Ok' && data.routes.length > 0) {
-                        // OSRM devuelve coordenadas en formato [lon, lat] — hay que invertirlas para Leaflet [lat, lon]
-                        var coords = data.routes[0].geometry.coordinates.map(function(c) {
-                            return [c[1], c[0]];
-                        });
-                        callback(coords);
-                    } else {
-                        // Fallback: línea recta si OSRM no encuentra ruta
-                        callback([desde, hasta]);
+    <!-- VIEW: HISTORICAL -->
+    <div class="view" id="view-historical">
+        <div class="view-title">Historical View</div>
+        <div class="card" style="padding:0;overflow:hidden;">
+            <div id="mapaHist"></div>
+        </div>
+        <div class="card">
+            <div class="card-title">Registros Historicos</div>
+            <p class="pkt-count" id="histCount">Total de registros: 0</p>
+            <div class="table-wrap">
+                <table>
+                    <thead><tr><th>No.</th><th>Fecha</th><th>Hora (COL)</th><th>Latitud</th><th>Longitud</th><th>Protocolo</th></tr></thead>
+                    <tbody id="histBody"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- VIEW: SNIFFER -->
+    <div class="view" id="view-sniffer">
+        <div class="view-title">
+            <span>Sniffer UDP</span>
+            <span class="status-badge off" id="snifferBadge"><span class="status-dot"></span><span id="snifferStatusText">Desconectado</span></span>
+        </div>
+        <div class="card">
+            <div class="card-title">Captura de Paquetes</div>
+            <p class="pkt-count" id="contador">Paquetes capturados: 0</p>
+            <div class="table-wrap">
+                <table>
+                    <thead><tr><th>No.</th><th>Fecha</th><th>Time (COL)</th><th>Source</th><th>Protocol</th><th>Info</th></tr></thead>
+                    <tbody id="dataBody"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+/* ===== THEME ===== */
+function getColombiaHour() {
+    var now = new Date();
+    var utc = now.getTime() + now.getTimezoneOffset() * 60000;
+    var col = new Date(utc - 5 * 3600000);
+    return col.getHours() + col.getMinutes() / 60;
+}
+function applyAutoTheme() {
+    var h = getColombiaHour();
+    setTheme((h >= 18.5 || h < 6) ? 'dark' : 'light');
+}
+var currentTheme = 'light';
+function setTheme(t) {
+    document.documentElement.setAttribute('data-theme', t);
+    currentTheme = t;
+    document.getElementById('themeLabel').textContent = t === 'dark' ? 'Modo Dia' : 'Modo Noche';
+    var icon = document.getElementById('themeIcon');
+    if (t === 'dark') {
+        icon.innerHTML = '<path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>';
+    } else {
+        icon.innerHTML = '<circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>';
+    }
+    if (rutaPolyline) rutaPolyline.setStyle({ color: getCS('--route') });
+    if (rutaHistPolyline) rutaHistPolyline.setStyle({ color: getCS('--route') });
+}
+function toggleTheme() { setTheme(currentTheme === 'light' ? 'dark' : 'light'); }
+function getCS(v) { return getComputedStyle(document.documentElement).getPropertyValue(v).trim(); }
+applyAutoTheme();
+
+/* ===== SIDEBAR ===== */
+function toggleSidebar() {
+    document.getElementById('sidebar').classList.toggle('open');
+    document.getElementById('overlay').classList.toggle('show');
+}
+var mapaHistInit = false, mapaHist, rutaHistPolyline;
+function showView(name, el) {
+    var views = document.querySelectorAll('.view');
+    for (var i = 0; i < views.length; i++) views[i].classList.remove('active');
+    document.getElementById('view-' + name).classList.add('active');
+    var items = document.querySelectorAll('.side-section .side-item:not([href])');
+    for (var i = 0; i < items.length; i++) items[i].classList.remove('active');
+    if (el) el.classList.add('active');
+    if (window.innerWidth <= 768) toggleSidebar();
+    if (name === 'historical' && !mapaHistInit) {
+        setTimeout(function() {
+            mapaHist = L.map('mapaHist').setView([10.9685, -74.7813], 13);
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '&copy; OpenStreetMap' }).addTo(mapaHist);
+            rutaHistPolyline = L.polyline([], { color: getCS('--route'), weight: 4 }).addTo(mapaHist);
+            mapaHistInit = true;
+            cargarHistorico();
+        }, 150);
+    }
+    if (name === 'realtime') setTimeout(function() { mapa.invalidateSize(); }, 150);
+    if (name === 'historical' && mapaHist) setTimeout(function() { mapaHist.invalidateSize(); }, 150);
+}
+
+/* ===== MAP ===== */
+var mapa = L.map('mapa').setView([10.9685, -74.7813], 13);
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '&copy; OpenStreetMap' }).addTo(mapa);
+var marcador = null;
+var rutaPolyline = L.polyline([], { color: getCS('--route'), weight: 4 }).addTo(mapa);
+var ultimoPunto = null;
+
+function limpiarRuta() {
+    rutaPolyline.setLatLngs([]);
+    ultimoPunto = null;
+    if (marcador) { mapa.removeLayer(marcador); marcador = null; }
+}
+function obtenerRutaOSRM(desde, hasta, cb) {
+    var url = 'https://router.project-osrm.org/route/v1/driving/' +
+        desde[1]+','+desde[0]+';'+hasta[1]+','+hasta[0]+'?overview=full&geometries=geojson';
+    fetch(url).then(function(r){return r.json();}).then(function(d){
+        if(d.code==='Ok'&&d.routes.length>0){
+            cb(d.routes[0].geometry.coordinates.map(function(c){return[c[1],c[0]];}));
+        } else { cb([desde,hasta]); }
+    }).catch(function(){cb([desde,hasta]);});
+}
+function actualizarMapa(lat,lon){
+    var p=[parseFloat(lat),parseFloat(lon)];
+    if(!marcador){marcador=L.marker(p).addTo(mapa);}else{marcador.setLatLng(p);}
+    mapa.setView(p,mapa.getZoom());
+    if(ultimoPunto){
+        obtenerRutaOSRM(ultimoPunto,p,function(coords){
+            var pts=rutaPolyline.getLatLngs();
+            coords.forEach(function(c){pts.push(c);});
+            rutaPolyline.setLatLngs(pts);
+        });
+    }
+    ultimoPunto=p;
+}
+
+/* ===== DATA ===== */
+var todosLosDatos=[], paqueteNum=0;
+function extraerFechaHora(ts){
+    if(!ts)return{fecha:'-',hora:'-'};
+    var d=new Date(ts);
+    if(isNaN(d.getTime())){var s=String(ts).split(' ');return{fecha:s[0]||'-',hora:s[1]||'-'};}
+    var c=new Date(d.getTime()-5*3600000);
+    return{fecha:c.toISOString().split('T')[0],hora:c.toISOString().split('T')[1].substring(0,8)};
+}
+function setStatus(on){
+    var b=document.getElementById('statusBadge'),t=document.getElementById('statusText');
+    var sb=document.getElementById('snifferBadge'),st=document.getElementById('snifferStatusText');
+    if(on){b.className='status-badge on';t.textContent='Conectado';sb.className='status-badge on';st.textContent='Capturando';}
+    else{b.className='status-badge off';t.textContent='Desconectado';sb.className='status-badge off';st.textContent='Desconectado';}
+}
+function conectarWS(){
+    var protocol=location.protocol==='https:'?'wss:':'ws:';
+    var ws=new WebSocket(protocol+'//'+location.host);
+    ws.onopen=function(){setStatus(true);};
+    ws.onmessage=function(e){
+        var msg=JSON.parse(e.data);
+        if(msg.type==='bienvenida')cargarHistorial();
+        if(msg.type==='nueva_ubicacion'){
+            paqueteNum++;msg.data.numero=paqueteNum;
+            todosLosDatos.unshift(msg.data);
+            actualizarGPS(msg.data);actualizarMapa(msg.data.latitud,msg.data.longitud);
+            agregarFila(msg.data);
+            document.getElementById('contador').textContent='Paquetes capturados: '+todosLosDatos.length;
+        }
+    };
+    ws.onclose=function(){setStatus(false);setTimeout(conectarWS,3000);};
+}
+function actualizarGPS(d){
+    var fh=extraerFechaHora(d.timestamp_gps);
+    document.getElementById('lat').textContent=d.latitud;
+    document.getElementById('lng').textContent=d.longitud;
+    document.getElementById('fecha').textContent=fh.fecha;
+    document.getElementById('hora').textContent=fh.hora;
+}
+function agregarFila(d){
+    var tbody=document.getElementById('dataBody');var row=document.createElement('tr');
+    var fh=extraerFechaHora(d.fecha_recepcion||d.timestamp_gps);
+    var src=(d.ip_origen||'-')+':'+(d.puerto_origen||'-');
+    var dst=(d.ip_destino||'-')+':'+(d.puerto_destino||'5005');
+    row.innerHTML='<td>'+(d.numero||'-')+'</td><td>'+fh.fecha+'</td><td>'+fh.hora+'</td><td>'+src+'</td><td><span class="proto-badge">UDP</span></td><td>'+src+' &rarr; '+dst+'</td>';
+    tbody.insertBefore(row,tbody.firstChild);
+    while(tbody.children.length>200)tbody.removeChild(tbody.lastChild);
+}
+function cargarHistorial(){
+    var xhr=new XMLHttpRequest();
+    xhr.open('GET','/api/ubicaciones?limit=50');
+    xhr.onload=function(){
+        if(xhr.status===200){
+            var data=JSON.parse(xhr.responseText);
+            if(Array.isArray(data)&&data.length>0){
+                todosLosDatos=[];document.getElementById('dataBody').innerHTML='';
+                paqueteNum=0;rutaPolyline.setLatLngs([]);
+                var ord=data.slice().reverse();
+                ord.forEach(function(d){paqueteNum++;d.numero=paqueteNum;todosLosDatos.unshift(d);agregarFila(d);});
+                function buildR(i){
+                    if(i>=ord.length){
+                        var u=[parseFloat(ord[ord.length-1].latitud),parseFloat(ord[ord.length-1].longitud)];
+                        if(!marcador)marcador=L.marker(u).addTo(mapa);else marcador.setLatLng(u);
+                        mapa.setView(u,15);ultimoPunto=u;actualizarGPS(todosLosDatos[0]);return;
                     }
-                })
-                .catch(function() {
-                    // Fallback: línea recta si hay error de red
-                    callback([desde, hasta]);
-                });
-        }
-
-        // Actualiza el mapa con la nueva coordenada usando routing OSRM
-        function actualizarMapa(lat, lon) {
-            var nuevoPunto = [parseFloat(lat), parseFloat(lon)];
-
-            // Mover o crear el marcador
-            if (!marcador) {
-                marcador = L.marker(nuevoPunto).addTo(mapa);
-            } else {
-                marcador.setLatLng(nuevoPunto);
-            }
-
-            mapa.setView(nuevoPunto, mapa.getZoom());
-
-            // Si hay un punto anterior, pedir la ruta por carretera entre ambos
-            if (ultimoPunto) {
-                obtenerRutaOSRM(ultimoPunto, nuevoPunto, function(coordsRuta) {
-                    // Agregar los puntos de la ruta a la polyline existente
-                    var puntosActuales = rutaPolyline.getLatLngs();
-                    coordsRuta.forEach(function(p) {
-                        puntosActuales.push(p);
-                    });
-                    rutaPolyline.setLatLngs(puntosActuales);
-                });
-            }
-
-            ultimoPunto = nuevoPunto;
-        }
-
-        var todosLosDatos = [];
-        var paqueteNum = 0;
-
-        // Convierte timestamp a hora Colombia (UTC-5)
-        function extraerFechaHora(timestamp) {
-            if (!timestamp) return { fecha: '-', hora: '-' };
-            var d = new Date(timestamp);
-            if (isNaN(d.getTime())) {
-                var str = String(timestamp);
-                var espacio = str.split(' ');
-                return { fecha: espacio[0] || '-', hora: espacio[1] || '-' };
-            }
-            var colombia = new Date(d.getTime() - (5 * 60 * 60 * 1000));
-            var fecha = colombia.toISOString().split('T')[0];
-            var hora = colombia.toISOString().split('T')[1].substring(0, 8);
-            return { fecha: fecha, hora: hora };
-        }
-
-        function conectarWS() {
-            var protocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
-            var ws = new WebSocket(protocol + '//' + location.host);
-
-            ws.onopen = function() {
-                document.getElementById('status').textContent = 'CONECTADO — Capturando paquetes...';
-                document.getElementById('status').className = 'connected';
-            };
-
-            ws.onmessage = function(event) {
-                var msg = JSON.parse(event.data);
-                if (msg.type === 'bienvenida') {
-                    cargarHistorial();
-                }
-                if (msg.type === 'nueva_ubicacion') {
-                    paqueteNum++;
-                    msg.data.numero = paqueteNum;
-                    todosLosDatos.unshift(msg.data);
-                    actualizarGPS(msg.data);
-                    actualizarMapa(msg.data.latitud, msg.data.longitud);
-                    agregarFila(msg.data);
-                    document.getElementById('contador').textContent = 'Paquetes capturados: ' + todosLosDatos.length;
-                }
-            };
-
-            ws.onclose = function() {
-                document.getElementById('status').textContent = 'DESCONECTADO — Reconectando en 3s...';
-                document.getElementById('status').className = 'disconnected';
-                setTimeout(conectarWS, 3000);
-            };
-        }
-
-        function actualizarGPS(data) {
-            var fh = extraerFechaHora(data.timestamp_gps);
-            document.getElementById('lat').textContent = data.latitud;
-            document.getElementById('lng').textContent = data.longitud;
-            document.getElementById('fecha').textContent = fh.fecha;
-            document.getElementById('hora').textContent = fh.hora;
-        }
-
-        function agregarFila(data) {
-            var tbody = document.getElementById('dataBody');
-            var row = document.createElement('tr');
-            var fh = extraerFechaHora(data.fecha_recepcion || data.timestamp_gps);
-            var source = (data.ip_origen || '-') + ':' + (data.puerto_origen || '-');
-            var destination = (data.ip_destino || '-') + ':' + (data.puerto_destino || '5005');
-            var info = source + ' → ' + destination;
-
-            row.innerHTML =
-                '<td>' + (data.numero || '-') + '</td>' +
-                '<td>' + fh.fecha + '</td>' +
-                '<td>' + fh.hora + '</td>' +
-                '<td>' + source + '</td>' +
-                '<td>UDP</td>' +
-                '<td>' + info + '</td>';
-
-            tbody.insertBefore(row, tbody.firstChild);
-            while (tbody.children.length > 200) {
-                tbody.removeChild(tbody.lastChild);
-            }
-        }
-
-        // Carga el historial y reconstruye la ruta por carretera entre los puntos históricos
-        function cargarHistorial() {
-            var xhr = new XMLHttpRequest();
-            xhr.open('GET', '/api/ubicaciones?limit=50');
-            xhr.onload = function() {
-                if (xhr.status === 200) {
-                    var data = JSON.parse(xhr.responseText);
-                    if (Array.isArray(data) && data.length > 0) {
-                        todosLosDatos = [];
-                        var tbody = document.getElementById('dataBody');
-                        tbody.innerHTML = '';
-                        paqueteNum = 0;
-                        rutaPolyline.setLatLngs([]);
-
-                        // Invertir para procesar del más antiguo al más reciente
-                        var ordenado = data.slice().reverse();
-
-                        ordenado.forEach(function(d, i) {
-                            paqueteNum++;
-                            d.numero = paqueteNum;
-                            todosLosDatos.unshift(d);
-                            agregarFila(d);
+                    var pt=[parseFloat(ord[i].latitud),parseFloat(ord[i].longitud)];
+                    if(i===0){var pts=rutaPolyline.getLatLngs();pts.push(pt);rutaPolyline.setLatLngs(pts);buildR(i+1);}
+                    else{
+                        var prev=[parseFloat(ord[i-1].latitud),parseFloat(ord[i-1].longitud)];
+                        obtenerRutaOSRM(prev,pt,function(coords){
+                            var pts=rutaPolyline.getLatLngs();coords.forEach(function(c){pts.push(c);});
+                            rutaPolyline.setLatLngs(pts);setTimeout(function(){buildR(i+1);},200);
                         });
-
-                        // Reconstruir la ruta histórica por carretera
-                        // Se hace de forma secuencial para no saturar OSRM con muchas peticiones simultáneas
-                        function construirRutaHistorica(index) {
-                            if (index >= ordenado.length) {
-                                // Terminó — centrar mapa en el último punto
-                                var ultimo = [parseFloat(ordenado[ordenado.length - 1].latitud), parseFloat(ordenado[ordenado.length - 1].longitud)];
-                                if (!marcador) {
-                                    marcador = L.marker(ultimo).addTo(mapa);
-                                } else {
-                                    marcador.setLatLng(ultimo);
-                                }
-                                mapa.setView(ultimo, 15);
-                                ultimoPunto = ultimo;
-                                actualizarGPS(todosLosDatos[0]);
-                                return;
-                            }
-
-                            var puntoActual = [parseFloat(ordenado[index].latitud), parseFloat(ordenado[index].longitud)];
-
-                            if (index === 0) {
-                                // Primer punto — solo agregar sin routing
-                                var pts = rutaPolyline.getLatLngs();
-                                pts.push(puntoActual);
-                                rutaPolyline.setLatLngs(pts);
-                                construirRutaHistorica(index + 1);
-                            } else {
-                                var puntoAnterior = [parseFloat(ordenado[index - 1].latitud), parseFloat(ordenado[index - 1].longitud)];
-                                obtenerRutaOSRM(puntoAnterior, puntoActual, function(coords) {
-                                    var pts = rutaPolyline.getLatLngs();
-                                    coords.forEach(function(p) { pts.push(p); });
-                                    rutaPolyline.setLatLngs(pts);
-                                    // Pequeña pausa para no saturar la API de OSRM
-                                    setTimeout(function() { construirRutaHistorica(index + 1); }, 200);
-                                });
-                            }
-                        }
-
-                        construirRutaHistorica(0);
-                        document.getElementById('contador').textContent = 'Paquetes capturados: ' + todosLosDatos.length;
                     }
                 }
-            };
-            xhr.send();
+                buildR(0);
+                document.getElementById('contador').textContent='Paquetes capturados: '+todosLosDatos.length;
+            }
         }
+    };
+    xhr.send();
+}
 
-        conectarWS();
-    </script>
+/* ===== HISTORICAL ===== */
+function cargarHistorico(){
+    var xhr=new XMLHttpRequest();
+    xhr.open('GET','/api/ubicaciones?limit=200');
+    xhr.onload=function(){
+        if(xhr.status===200){
+            var data=JSON.parse(xhr.responseText);
+            if(Array.isArray(data)&&data.length>0){
+                var tbody=document.getElementById('histBody');tbody.innerHTML='';
+                var ord=data.slice().reverse();
+                document.getElementById('histCount').textContent='Total de registros: '+data.length;
+                ord.forEach(function(d,i){
+                    var fh=extraerFechaHora(d.timestamp_gps);var row=document.createElement('tr');
+                    row.innerHTML='<td>'+(i+1)+'</td><td>'+fh.fecha+'</td><td>'+fh.hora+'</td><td>'+d.latitud+'</td><td>'+d.longitud+'</td><td><span class="proto-badge">'+(d.protocolo||'UDP')+'</span></td>';
+                    tbody.appendChild(row);
+                });
+                function buildH(i){
+                    if(i>=ord.length){
+                        var last=[parseFloat(ord[ord.length-1].latitud),parseFloat(ord[ord.length-1].longitud)];
+                        L.marker(last).addTo(mapaHist);mapaHist.setView(last,14);return;
+                    }
+                    var pt=[parseFloat(ord[i].latitud),parseFloat(ord[i].longitud)];
+                    if(i===0){rutaHistPolyline.addLatLng(pt);buildH(i+1);}
+                    else{
+                        var prev=[parseFloat(ord[i-1].latitud),parseFloat(ord[i-1].longitud)];
+                        obtenerRutaOSRM(prev,pt,function(coords){
+                            coords.forEach(function(c){rutaHistPolyline.addLatLng(c);});
+                            setTimeout(function(){buildH(i+1);},200);
+                        });
+                    }
+                }
+                buildH(0);
+            }
+        }
+    };
+    xhr.send();
+}
+
+conectarWS();
+</script>
 </body>
 </html>
