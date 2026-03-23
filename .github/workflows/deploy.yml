@@ -1,11 +1,24 @@
-name: Deploy al EC2
+name: Deploy
 
 on:
   push:
-    branches: [ main ]
+    branches: [ main, dev ]
 
 jobs:
+  deploy-dev:
+    if: github.ref == 'refs/heads/dev'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deploy DEV a EC2 Jose
+        uses: appleboy/ssh-action@master
+        with:
+          host: gpstracker3.ddns.net
+          username: ubuntu
+          key: ${{ secrets.EC2_KEY }}
+          script: /home/ubuntu/deploy-dev.sh
+
   deploy-jose:
+    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     steps:
       - name: Deploy EC2 Jose
@@ -17,6 +30,7 @@ jobs:
           script: /home/ubuntu/deploy.sh
 
   deploy-daniel:
+    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     steps:
       - name: Deploy EC2 Daniel
@@ -28,6 +42,7 @@ jobs:
           script: /home/ubuntu/deploy.sh
 
   deploy-polo:
+    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     steps:
       - name: Deploy EC2 Polo
@@ -39,6 +54,7 @@ jobs:
           script: /home/ubuntu/deploy.sh
 
   deploy-ivan:
+    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     steps:
       - name: Deploy EC2 Ivan
