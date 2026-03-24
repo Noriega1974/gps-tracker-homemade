@@ -447,7 +447,7 @@ function renderHistorico(filtroDesde,filtroHasta){
         })(datos[i],i);
     }
 
-    /* Extraer puntos significativos (>30m entre si) */
+    /* Extraer puntos significativos (>30m entre si) y recortar decimales */
     var todosPuntos=[];
     for(var i=0;i<datos.length;i++){
         todosPuntos.push([parseFloat(datos[i].latitud),parseFloat(datos[i].longitud)]);
@@ -472,53 +472,35 @@ function renderHistorico(filtroDesde,filtroHasta){
         mapaHist.fitBounds(L.latLngBounds(todosPuntos),{padding:[40,40]});
     } else { mapaHist.setView(last,15); }
 
-    /* OSRM con TODOS los waypoints en UNA sola llamada */
-    /* OSRM soporta hasta ~100 waypoints por request */
+    /* UNA sola llamada OSRM con todos los waypoints (como el codigo de la compañera) */
     if(puntosRuta.length>=2){
-        /* Dividir en batches de max 50 waypoints */
-        var batches=[];
-        for(var i=0;i<puntosRuta.length;i+=49){
-            var batch=puntosRuta.slice(i,Math.min(i+50,puntosRuta.length));
-            /* Si no es el primer batch, incluir el ultimo punto del batch anterior para continuidad */
-            if(i>0 && batch.length>0){
-                batch.unshift(puntosRuta[i-1]);
-            }
-            if(batch.length>=2) batches.push(batch);
-        }
-
-        function procesarBatch(batchIdx){
-            if(batchIdx>=batches.length) return;
-            var batch=batches[batchIdx];
-            /* Construir URL con todos los waypoints del batch */
-            var coords=batch.map(function(p){return p[1]+','+p[0];}).join(';');
-            var url='https://router.project-osrm.org/route/v1/driving/'+coords+'?overview=full&geometries=geojson';
-
-            fetch(url).then(function(r){return r.json();}).then(function(data){
-                if(data.code==='Ok'&&data.routes.length>0){
-                    var routeCoords=data.routes[0].geometry.coordinates.map(function(c){return[c[1],c[0]];});
-                    /* Agregar a la polyline */
-                    var pts=rutaHistPolyline.getLatLngs();
-                    routeCoords.forEach(function(c){pts.push(c);});
-                    rutaHistPolyline.setLatLngs(pts);
-                } else {
-                    /* Fallback: linea directa para este batch */
-                    var pts=rutaHistPolyline.getLatLngs();
-                    batch.forEach(function(p){pts.push(p);});
-                    rutaHistPolyline.setLatLngs(pts);
-                }
-                /* Siguiente batch con pausa */
-                setTimeout(function(){procesarBatch(batchIdx+1);},300);
-            }).catch(function(){
+        /* Recortar coordenadas a 6 decimales para URL mas corta */
+        var coords=puntosRuta.map(function(p){
+            return p[1].toFixed(6)+','+p[0].toFixed(6);
+        }).join(';');
+        var url='https://router.project-osrm.org/route/v1/driving/'+coords+'?overview=full&geometries=geojson';
+        console.log('[HIST] OSRM URL length: '+url.length+', waypoints: '+puntosRuta.length);
+        fetch(url).then(function(r){
+            console.log('[HIST] OSRM status: '+r.status);
+            return r.json();
+        }).then(function(data){
+            if(data.code==='Ok'&&data.routes.length>0){
+                var routeCoords=data.routes[0].geometry.coordinates.map(function(c){return[c[1],c[0]];});
+                rutaHistPolyline.setLatLngs(routeCoords);
+                rutaHistPolyline.setStyle({color:routeColor,weight:5,opacity:0.85});
+                console.log('[HIST] Ruta OSRM dibujada: '+routeCoords.length+' coords');
+            } else {
+                console.log('[HIST] OSRM respuesta no OK:', data.code, data.message);
                 /* Fallback: linea directa */
-                var pts=rutaHistPolyline.getLatLngs();
-                batch.forEach(function(p){pts.push(p);});
-                rutaHistPolyline.setLatLngs(pts);
-                setTimeout(function(){procesarBatch(batchIdx+1);},300);
-            });
-        }
-        procesarBatch(0);
-    } else if(puntosRuta.length===1){
-        rutaHistPolyline.setLatLngs(puntosRuta);
+                rutaHistPolyline.setLatLngs(puntosRuta);
+                rutaHistPolyline.setStyle({color:routeColor,weight:4,opacity:0.7});
+            }
+        }).catch(function(err){
+            console.log('[HIST] OSRM error:', err.message||err);
+            /* Fallback: linea directa */
+            rutaHistPolyline.setLatLngs(puntosRuta);
+            rutaHistPolyline.setStyle({color:routeColor,weight:4,opacity:0.7});
+        });
     }
 }
 
