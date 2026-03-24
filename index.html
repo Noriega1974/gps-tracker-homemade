@@ -401,87 +401,70 @@ function cargarHistorico(filtroDesde,filtroHasta){
 
 function renderHistorico(filtroDesde,filtroHasta){
     var tbody=document.getElementById('histBody');tbody.innerHTML='';
+    /* Limpiar mapa */
     if(rutaHistPolyline)rutaHistPolyline.setLatLngs([]);
     if(marcadorHist){mapaHist.removeLayer(marcadorHist);marcadorHist=null;}
     if(window.histCircles){window.histCircles.forEach(function(c){mapaHist.removeLayer(c);});}
     window.histCircles=[];
-    if(window.histLineaDirect){mapaHist.removeLayer(window.histLineaDirect);window.histLineaDirect=null;}
 
     /* Filtrar por fecha */
-    var datos=histDataCache;
-    if(filtroDesde||filtroHasta){
-        datos=datos.filter(function(d){
-            var fh=extraerFechaHora(d.timestamp_gps);
-            if(filtroDesde&&fh.fecha<filtroDesde)return false;
-            if(filtroHasta&&fh.fecha>filtroHasta)return false;
-            return true;
-        });
+    var datos=[];
+    for(var i=0;i<histDataCache.length;i++){
+        var d=histDataCache[i];
+        var fh=extraerFechaHora(d.timestamp_gps||d.fecha_recepcion);
+        if(filtroDesde && fh.fecha < filtroDesde) continue;
+        if(filtroHasta && fh.fecha > filtroHasta) continue;
+        datos.push(d);
     }
 
     document.getElementById('histCount').textContent='Total de registros: '+datos.length;
-    if(datos.length===0)return;
+    if(datos.length===0){
+        document.getElementById('histCount').textContent='No hay registros para el rango seleccionado';
+        return;
+    }
 
     /* Llenar tabla — click mueve marcador */
-    datos.forEach(function(d,i){
-        var fh=extraerFechaHora(d.timestamp_gps);var row=document.createElement('tr');
-        row.innerHTML='<td>'+(i+1)+'</td><td>'+fh.fecha+'</td><td>'+fh.hora+'</td><td>'+d.latitud+'</td><td>'+d.longitud+'</td><td><span class="proto-badge">'+(d.protocolo||'UDP')+'</span></td>';
-        row.style.cursor='pointer';
-        row.setAttribute('data-lat',d.latitud);
-        row.setAttribute('data-lng',d.longitud);
-        row.onclick=function(){
-            var prev=tbody.querySelector('.selected');if(prev)prev.classList.remove('selected');
-            this.classList.add('selected');
-            var lat=parseFloat(this.getAttribute('data-lat'));
-            var lng=parseFloat(this.getAttribute('data-lng'));
-            if(!marcadorHist)marcadorHist=L.marker([lat,lng]).addTo(mapaHist);
-            else marcadorHist.setLatLng([lat,lng]);
-            mapaHist.setView([lat,lng],16);
-        };
-        tbody.appendChild(row);
-    });
+    for(var i=0;i<datos.length;i++){
+        (function(d,idx){
+            var fh=extraerFechaHora(d.timestamp_gps||d.fecha_recepcion);
+            var row=document.createElement('tr');
+            row.innerHTML='<td>'+(idx+1)+'</td><td>'+fh.fecha+'</td><td>'+fh.hora+'</td><td>'+d.latitud+'</td><td>'+d.longitud+'</td><td><span class="proto-badge">'+(d.protocolo||'UDP')+'</span></td>';
+            row.style.cursor='pointer';
+            var lat=parseFloat(d.latitud), lng=parseFloat(d.longitud);
+            row.onclick=function(){
+                var prev=tbody.querySelector('.selected');if(prev)prev.classList.remove('selected');
+                this.classList.add('selected');
+                if(!marcadorHist)marcadorHist=L.marker([lat,lng]).addTo(mapaHist);
+                else marcadorHist.setLatLng([lat,lng]);
+                mapaHist.setView([lat,lng],16);
+            };
+            tbody.appendChild(row);
+        })(datos[i],i);
+    }
 
-    /* Extraer todos los puntos */
-    var todosPuntos=datos.map(function(d){return[parseFloat(d.latitud),parseFloat(d.longitud)];});
+    /* Extraer puntos y dibujar ruta directa solida */
+    var todosPuntos=[];
+    for(var i=0;i<datos.length;i++){
+        todosPuntos.push([parseFloat(datos[i].latitud),parseFloat(datos[i].longitud)]);
+    }
     var routeColor=getCS('--route');
 
-    /* 1. Dibujar linea directa inmediatamente (siempre visible) */
-    window.histLineaDirect=L.polyline(todosPuntos,{color:routeColor,weight:4,opacity:0.5,dashArray:'8,8'}).addTo(mapaHist);
+    /* Polyline solida conectando todos los puntos */
+    rutaHistPolyline.setLatLngs(todosPuntos);
+    rutaHistPolyline.setStyle({color:routeColor,weight:4,opacity:0.8});
 
-    /* 2. Circulitos en cada punto */
-    todosPuntos.forEach(function(pt){
-        var c=L.circleMarker(pt,{radius:5,color:routeColor,fillColor:routeColor,fillOpacity:0.8,weight:2}).addTo(mapaHist);
+    /* Circulitos en cada punto */
+    for(var i=0;i<todosPuntos.length;i++){
+        var c=L.circleMarker(todosPuntos[i],{radius:5,color:routeColor,fillColor:routeColor,fillOpacity:0.8,weight:2}).addTo(mapaHist);
         window.histCircles.push(c);
-    });
+    }
 
-    /* 3. Marcador en ultimo punto y ajustar zoom */
+    /* Marcador en ultimo punto y ajustar zoom */
     var last=todosPuntos[todosPuntos.length-1];
     marcadorHist=L.marker(last).addTo(mapaHist);
     if(todosPuntos.length>1){
         mapaHist.fitBounds(L.latLngBounds(todosPuntos),{padding:[40,40]});
     } else { mapaHist.setView(last,15); }
-
-    /* 4. Intentar mejorar con OSRM (ruta por carretera encima de la linea directa) */
-    var puntosRuta=[];
-    todosPuntos.forEach(function(pt){
-        if(puntosRuta.length===0||distanciaM(puntosRuta[puntosRuta.length-1],pt)>30)puntosRuta.push(pt);
-    });
-    if(puntosRuta.length>=2){
-        function buildH(i){
-            if(i>=puntosRuta.length){
-                /* OSRM terminó — quitar la linea directa punteada */
-                if(window.histLineaDirect){mapaHist.removeLayer(window.histLineaDirect);window.histLineaDirect=null;}
-                return;
-            }
-            if(i===0){rutaHistPolyline.addLatLng(puntosRuta[0]);buildH(1);}
-            else{
-                obtenerRutaOSRM(puntosRuta[i-1],puntosRuta[i],function(coords){
-                    coords.forEach(function(c){rutaHistPolyline.addLatLng(c);});
-                    setTimeout(function(){buildH(i+1);},250);
-                });
-            }
-        }
-        buildH(0);
-    }
 }
 
 function filtrarHistorico(){
