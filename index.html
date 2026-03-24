@@ -152,8 +152,11 @@
         }
 
         /* ========== MAP ========== */
+        .map-wrap {
+            max-width: 700px; margin: 0 auto;
+        }
         #mapa, #mapaHist {
-            width: 100%; height: 420px; border-radius: 12px;
+            width: 100%; height: 400px; border-radius: 12px;
             border: 1px solid var(--brd); overflow: hidden;
         }
 
@@ -242,6 +245,7 @@
         .overlay.show { display: block; }
 
         /* ========== DARK MAP ========== */
+        .custom-marker { background: none !important; border: none !important; }
         [data-theme="dark"] .leaflet-tile-pane { filter: brightness(0.7) contrast(1.1) saturate(0.8); }
         [data-theme="dark"] .leaflet-control-zoom a {
             background: var(--bg2) !important; color: var(--txt1) !important; border-color: var(--brd) !important;
@@ -325,7 +329,7 @@
             <span>Ubicacion en Tiempo Real</span>
             <span class="status-badge off" id="statusBadge"><span class="status-dot"></span><span id="statusText">Desconectado</span></span>
         </div>
-        <div class="card" style="padding:0;overflow:hidden;">
+        <div class="card map-wrap" style="padding:0;overflow:hidden;">
             <div id="mapa"></div>
         </div>
         <div class="card">
@@ -358,7 +362,7 @@
     <!-- VIEW: HISTORICAL -->
     <div class="view" id="view-historical">
         <div class="view-title">Historical View</div>
-        <div class="card" style="padding:0;overflow:hidden;">
+        <div class="card map-wrap" style="padding:0;overflow:hidden;">
             <div id="mapaHist"></div>
         </div>
         <div class="card">
@@ -460,15 +464,10 @@ var ultimoPunto = null;
 function crearIcono() {
     var color = getCS('--accent');
     return L.divIcon({
-        className: '',
-        html: '<svg width="32" height="42" viewBox="0 0 32 42" xmlns="http://www.w3.org/2000/svg">' +
-              '<path d="M16 0C7.163 0 0 7.163 0 16c0 12 16 26 16 26s16-14 16-26C32 7.163 24.837 0 16 0z" fill="'+color+'"/>' +
-              '<circle cx="16" cy="15" r="7" fill="white"/>' +
-              '<circle cx="16" cy="15" r="3" fill="'+color+'"/>' +
-              '</svg>',
-        iconSize: [32, 42],
-        iconAnchor: [16, 42],
-        popupAnchor: [0, -42]
+        className: 'custom-marker',
+        html: '<div style="width:22px;height:22px;background:'+color+';border:3px solid #fff;border-radius:50%;box-shadow:0 2px 8px rgba(0,0,0,0.4);"></div>',
+        iconSize: [22, 22],
+        iconAnchor: [11, 11]
     });
 }
 
