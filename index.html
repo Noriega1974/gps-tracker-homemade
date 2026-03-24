@@ -403,11 +403,11 @@ function renderHistorico(filtroDesde,filtroHasta){
     var tbody=document.getElementById('histBody');tbody.innerHTML='';
     if(rutaHistPolyline)rutaHistPolyline.setLatLngs([]);
     if(marcadorHist){mapaHist.removeLayer(marcadorHist);marcadorHist=null;}
-    /* Limpiar marcadores de puntos anteriores */
     if(window.histCircles){window.histCircles.forEach(function(c){mapaHist.removeLayer(c);});}
     window.histCircles=[];
+    if(window.histLineaDirect){mapaHist.removeLayer(window.histLineaDirect);window.histLineaDirect=null;}
 
-    /* Filtrar por fecha si hay filtro */
+    /* Filtrar por fecha */
     var datos=histDataCache;
     if(filtroDesde||filtroHasta){
         datos=datos.filter(function(d){
@@ -421,7 +421,7 @@ function renderHistorico(filtroDesde,filtroHasta){
     document.getElementById('histCount').textContent='Total de registros: '+datos.length;
     if(datos.length===0)return;
 
-    /* Llenar tabla con click para mover marcador */
+    /* Llenar tabla — click mueve marcador */
     datos.forEach(function(d,i){
         var fh=extraerFechaHora(d.timestamp_gps);var row=document.createElement('tr');
         row.innerHTML='<td>'+(i+1)+'</td><td>'+fh.fecha+'</td><td>'+fh.hora+'</td><td>'+d.latitud+'</td><td>'+d.longitud+'</td><td><span class="proto-badge">'+(d.protocolo||'UDP')+'</span></td>';
@@ -429,52 +429,59 @@ function renderHistorico(filtroDesde,filtroHasta){
         row.setAttribute('data-lat',d.latitud);
         row.setAttribute('data-lng',d.longitud);
         row.onclick=function(){
-            /* Quitar seleccion anterior */
             var prev=tbody.querySelector('.selected');if(prev)prev.classList.remove('selected');
             this.classList.add('selected');
             var lat=parseFloat(this.getAttribute('data-lat'));
             var lng=parseFloat(this.getAttribute('data-lng'));
-            if(!marcadorHist){marcadorHist=L.marker([lat,lng]).addTo(mapaHist);}
-            else{marcadorHist.setLatLng([lat,lng]);}
+            if(!marcadorHist)marcadorHist=L.marker([lat,lng]).addTo(mapaHist);
+            else marcadorHist.setLatLng([lat,lng]);
             mapaHist.setView([lat,lng],16);
         };
         tbody.appendChild(row);
     });
 
-    /* Construir ruta — filtrar puntos cercanos (<30m) para reducir llamadas OSRM */
-    var puntosRuta=[];
-    datos.forEach(function(d){
-        var pt=[parseFloat(d.latitud),parseFloat(d.longitud)];
-        if(puntosRuta.length===0||distanciaM(puntosRuta[puntosRuta.length-1],pt)>30)puntosRuta.push(pt);
-    });
-
-    /* Poner circulitos en cada punto real */
+    /* Extraer todos los puntos */
+    var todosPuntos=datos.map(function(d){return[parseFloat(d.latitud),parseFloat(d.longitud)];});
     var routeColor=getCS('--route');
-    datos.forEach(function(d){
-        var pt=[parseFloat(d.latitud),parseFloat(d.longitud)];
-        var c=L.circleMarker(pt,{radius:4,color:routeColor,fillColor:routeColor,fillOpacity:0.7,weight:1}).addTo(mapaHist);
+
+    /* 1. Dibujar linea directa inmediatamente (siempre visible) */
+    window.histLineaDirect=L.polyline(todosPuntos,{color:routeColor,weight:4,opacity:0.5,dashArray:'8,8'}).addTo(mapaHist);
+
+    /* 2. Circulitos en cada punto */
+    todosPuntos.forEach(function(pt){
+        var c=L.circleMarker(pt,{radius:5,color:routeColor,fillColor:routeColor,fillOpacity:0.8,weight:2}).addTo(mapaHist);
         window.histCircles.push(c);
     });
 
-    function buildH(i){
-        if(i>=puntosRuta.length){
-            var last=puntosRuta[puntosRuta.length-1];
-            marcadorHist=L.marker(last).addTo(mapaHist);
-            /* Ajustar zoom para ver toda la ruta */
-            if(puntosRuta.length>1){
-                var bounds=L.latLngBounds(puntosRuta);mapaHist.fitBounds(bounds,{padding:[30,30]});
-            } else { mapaHist.setView(last,15); }
-            return;
+    /* 3. Marcador en ultimo punto y ajustar zoom */
+    var last=todosPuntos[todosPuntos.length-1];
+    marcadorHist=L.marker(last).addTo(mapaHist);
+    if(todosPuntos.length>1){
+        mapaHist.fitBounds(L.latLngBounds(todosPuntos),{padding:[40,40]});
+    } else { mapaHist.setView(last,15); }
+
+    /* 4. Intentar mejorar con OSRM (ruta por carretera encima de la linea directa) */
+    var puntosRuta=[];
+    todosPuntos.forEach(function(pt){
+        if(puntosRuta.length===0||distanciaM(puntosRuta[puntosRuta.length-1],pt)>30)puntosRuta.push(pt);
+    });
+    if(puntosRuta.length>=2){
+        function buildH(i){
+            if(i>=puntosRuta.length){
+                /* OSRM terminó — quitar la linea directa punteada */
+                if(window.histLineaDirect){mapaHist.removeLayer(window.histLineaDirect);window.histLineaDirect=null;}
+                return;
+            }
+            if(i===0){rutaHistPolyline.addLatLng(puntosRuta[0]);buildH(1);}
+            else{
+                obtenerRutaOSRM(puntosRuta[i-1],puntosRuta[i],function(coords){
+                    coords.forEach(function(c){rutaHistPolyline.addLatLng(c);});
+                    setTimeout(function(){buildH(i+1);},250);
+                });
+            }
         }
-        if(i===0){rutaHistPolyline.addLatLng(puntosRuta[0]);buildH(1);}
-        else{
-            obtenerRutaOSRM(puntosRuta[i-1],puntosRuta[i],function(coords){
-                coords.forEach(function(c){rutaHistPolyline.addLatLng(c);});
-                setTimeout(function(){buildH(i+1);},250);
-            });
-        }
+        buildH(0);
     }
-    buildH(0);
 }
 
 function filtrarHistorico(){
