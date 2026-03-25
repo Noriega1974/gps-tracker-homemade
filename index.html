@@ -172,10 +172,6 @@
                 <div class="gps-item"><span class="gps-item-label">Hora (COL)</span><span class="gps-item-value" id="hora">---</span></div>
             </div>
         </div>
-        <button class="btn-accent" onclick="limpiarRuta()">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" width="18" height="18"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
-            Limpiar Trayectoria
-        </button>
     </div>
 
     <!-- HISTORICAL -->
@@ -276,8 +272,6 @@ fetch('/api/ubicaciones?limit=1').then(function(r){return r.json();}).then(funct
     }
 }).catch(function(){});
 
-function limpiarRuta(){rutaPolyline.setLatLngs([]);ultimoPunto=null;if(marcador){mapa.removeLayer(marcador);marcador=null;}}
-
 function obtenerRutaOSRM(desde,hasta,cb){
     var url='https://router.project-osrm.org/route/v1/driving/'+desde[1]+','+desde[0]+';'+hasta[1]+','+hasta[0]+'?overview=full&geometries=geojson';
     fetch(url).then(function(r){return r.json();}).then(function(d){
@@ -353,31 +347,18 @@ function cargarHistorial(){
         if(xhr.status===200){
             var data=JSON.parse(xhr.responseText);
             if(Array.isArray(data)&&data.length>0){
-                todosLosDatos=[];document.getElementById('dataBody').innerHTML='';paqueteNum=0;rutaPolyline.setLatLngs([]);
+                /* Llenar solo la tabla del sniffer */
+                todosLosDatos=[];document.getElementById('dataBody').innerHTML='';paqueteNum=0;
                 var ord=data.slice().reverse();
                 ord.forEach(function(d){paqueteNum++;d.numero=paqueteNum;todosLosDatos.unshift(d);agregarFila(d);});
-                /* Construir ruta solo entre puntos distantes (>30m) para evitar llamadas innecesarias a OSRM */
-                var puntosRuta=[];
-                ord.forEach(function(d){
-                    var pt=[parseFloat(d.latitud),parseFloat(d.longitud)];
-                    if(puntosRuta.length===0||distanciaM(puntosRuta[puntosRuta.length-1],pt)>30) puntosRuta.push(pt);
-                });
-                function buildR(i){
-                    if(i>=puntosRuta.length){
-                        var u=puntosRuta[puntosRuta.length-1];
-                        if(!marcador)marcador=L.marker(u).addTo(mapa);else marcador.setLatLng(u);
-                        mapa.setView(u,15);ultimoPunto=u;actualizarGPS(todosLosDatos[0]);return;
-                    }
-                    if(i===0){rutaPolyline.addLatLng(puntosRuta[0]);buildR(1);}
-                    else{
-                        obtenerRutaOSRM(puntosRuta[i-1],puntosRuta[i],function(coords){
-                            coords.forEach(function(c){rutaPolyline.addLatLng(c);});
-                            setTimeout(function(){buildR(i+1);},250);
-                        });
-                    }
-                }
-                buildR(0);
                 document.getElementById('contador').textContent='Paquetes capturados: '+todosLosDatos.length;
+                /* Solo mostrar ultimo punto en el mapa, sin ruta */
+                var ultimo=data[0];
+                var p=[parseFloat(ultimo.latitud),parseFloat(ultimo.longitud)];
+                if(!marcador)marcador=L.marker(p).addTo(mapa);else marcador.setLatLng(p);
+                mapa.setView(p,15);
+                ultimoPunto=p;
+                actualizarGPS(ultimo);
             }
         }
     };xhr.send();
