@@ -6,8 +6,8 @@ const { Pool } = require('pg');
 const path = require('path');
 const os = require('os');
 
-const UDP_PORT = 5005;
-const WEB_PORT = 8080;
+const UDP_PORT = parseInt(process.env.UDP_PORT) || 5005;
+const WEB_PORT = parseInt(process.env.PORT) || 8080;
 
 // =====================================================
 //  CONFIGURACION BASE DE DATOS — CAMBIA TU PASSWORD
@@ -20,7 +20,6 @@ const pool = new Pool({
     port: 5432,
     ssl: { rejectUnauthorized: false }
 });
-
 let wss;
 let packetCount = 0;
 
