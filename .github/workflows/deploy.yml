@@ -2,7 +2,7 @@ name: Deploy
 
 on:
   push:
-    branches: [ main, dev ]
+    branches: [ main, dev, devdaniel ]
 
 jobs:
   deploy-dev:
@@ -16,6 +16,18 @@ jobs:
           username: ubuntu
           key: ${{ secrets.EC2_KEY }}
           script: /home/ubuntu/deploy-dev.sh
+
+  deploy-devdaniel:
+    if: github.ref == 'refs/heads/devdaniel'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deploy DEV Daniel
+        uses: appleboy/ssh-action@master
+        with:
+          host: henriquezd.ddns.net
+          username: ubuntu
+          key: ${{ secrets.EC2_KEY_DANIEL }}
+          script: /home/ubuntu/deploy-devdaniel.sh
 
   deploy-jose:
     if: github.ref == 'refs/heads/main'

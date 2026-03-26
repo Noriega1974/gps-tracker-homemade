@@ -103,6 +103,10 @@
         <div class="view-title"><span>Ubicacion en Tiempo Real</span><span class="status-badge off" id="statusBadge"><span class="status-dot"></span><span id="statusText">Desconectado</span></span></div>
         <div class="card map-wrap" style="padding:0;overflow:hidden;"><div id="mapa"></div></div>
         <div class="card"><div class="card-title">Posicion Actual</div><div class="gps-grid"><div class="gps-item"><span class="gps-item-label">Latitud</span><span class="gps-item-value" id="lat">---</span></div><div class="gps-item"><span class="gps-item-label">Longitud</span><span class="gps-item-value" id="lng">---</span></div><div class="gps-item"><span class="gps-item-label">Fecha</span><span class="gps-item-value" id="fecha">---</span></div><div class="gps-item"><span class="gps-item-label">Hora (COL)</span><span class="gps-item-value" id="hora">---</span></div></div></div>
+        <button class="btn-accent" onclick="limpiarRuta()">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" width="18" height="18"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+            Limpiar Trayectoria
+        </button>
     </div>
     <div class="view" id="view-historical">
         <div class="view-title">Historical View</div>
@@ -170,13 +174,17 @@ fetch('/api/ubicaciones?limit=1').then(function(r){return r.json();}).then(funct
 
 /* -- OSRM PAR A PAR: solo para Real-Time, 1 llamada por cada nuevo punto -- */
 function obtenerRutaOSRM(desde,hasta,cb){
-    /* Construye URL con 2 puntos: lon1,lat1;lon2,lat2 */
     var url='https://router.project-osrm.org/route/v1/driving/'+desde[1]+','+desde[0]+';'+hasta[1]+','+hasta[0]+'?overview=full&geometries=geojson';
     fetch(url).then(function(r){return r.json();}).then(function(d){
         if(d.code==='Ok'&&d.routes.length>0)
-            cb(d.routes[0].geometry.coordinates.map(function(c){return[c[1],c[0]];})); /* OSRM da [lon,lat], Leaflet necesita [lat,lon] */
-        else cb([desde,hasta]); /* fallback: linea recta */
+            cb(d.routes[0].geometry.coordinates.map(function(c){return[c[1],c[0]];}));
+        else cb([desde,hasta]);
     }).catch(function(){cb([desde,hasta]);});
+}
+
+/* -- LIMPIAR RUTA: borra la polyline del mapa real-time sin recargar -- */
+function limpiarRuta(){
+    rutaPolyline.setLatLngs([]);
 }
 
 /* -- HAVERSINE: distancia en metros entre 2 puntos, filtra puntos <30m -- */
