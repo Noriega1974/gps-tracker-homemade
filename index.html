@@ -290,7 +290,7 @@ function cargarHistorial(){
 
 var histDataCache=[];
 function cargarHistorico(filtroDesde,filtroHasta,filtroHoraDesde,filtroHoraHasta){
-    var xhr=new XMLHttpRequest();xhr.open('GET','/api/ubicaciones?limit=500');
+    var xhr=new XMLHttpRequest();xhr.open('GET','/api/ubicaciones?limit=50');
     xhr.onload=function(){
         if(xhr.status===200){
             var data=JSON.parse(xhr.responseText);
