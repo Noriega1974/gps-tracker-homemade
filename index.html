@@ -399,7 +399,7 @@ function validarRango(desde,hasta,horaDesde,horaHasta){
 
 /* — cargarHistorico: pide 500 registros a la BD — */
 function cargarHistorico(filtroDesde,filtroHasta,filtroHoraDesde,filtroHoraHasta){
-    var xhr=new XMLHttpRequest();xhr.open('GET','/api/ubicaciones?limit=50');
+    var xhr=new XMLHttpRequest();xhr.open('GET','/api/ubicaciones?limit=500');
     xhr.onload=function(){
         if(xhr.status===200){
             var data=JSON.parse(xhr.responseText);
