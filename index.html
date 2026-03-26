@@ -65,16 +65,11 @@
         .filter-bar input[type="time"]{padding:8px 12px;border:1px solid var(--brd);border-radius:8px;background:var(--bg-input);color:var(--txt1);font-family:'Outfit',sans-serif;font-size:13px;transition:border 0.2s;}
         .filter-bar input[type="date"]:focus,
         .filter-bar input[type="time"]:focus{outline:none;border-color:var(--accent);}
-        .filter-bar input[type="date"].input-error,
-        .filter-bar input[type="time"].input-error{border-color:var(--alert)!important;}
         .filter-btn{padding:8px 18px;border:none;border-radius:8px;background:var(--accent);color:#fff;font-family:'Outfit',sans-serif;font-size:13px;font-weight:600;cursor:pointer;transition:background 0.2s;}
         .filter-btn:hover{background:var(--accent-h);}
         .filter-btn.secondary{background:var(--bg-input);color:var(--txt2);border:1px solid var(--brd);}
         .filter-btn.secondary:hover{background:var(--brd);}
         .filter-group{display:flex;align-items:center;gap:8px;padding:10px 14px;background:var(--bg-input);border:1px solid var(--brd-lt);border-radius:10px;}
-        .filter-error{display:none;align-items:center;gap:8px;padding:10px 14px;border-radius:10px;background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.3);color:var(--alert);font-size:13px;font-weight:500;margin-bottom:12px;}
-        .filter-error.show{display:flex;}
-        .filter-error svg{flex-shrink:0;}
         .btn-accent{display:inline-flex;align-items:center;gap:8px;margin-top:14px;padding:9px 18px;border:none;border-radius:8px;background:var(--accent);color:#fff;font-family:'Outfit',sans-serif;font-size:13px;font-weight:600;cursor:pointer;transition:background 0.2s;}
         .btn-accent:hover{background:var(--accent-h);}
         .overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.4);z-index:90;}
@@ -121,21 +116,16 @@
         <div class="view-title">Historical View</div>
         <div class="card">
             <div class="card-title">Filtrar por Fecha y Hora</div>
-            <!-- MENSAJE DE ERROR DE VALIDACION -->
-            <div class="filter-error" id="filterError">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" width="18" height="18"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
-                <span id="filterErrorMsg">Rango de fechas invalido.</span>
-            </div>
             <div class="filter-bar">
                 <div class="filter-group">
                     <label>Desde:</label>
-                    <input type="date" id="histFechaDesde" onchange="onDesdeChange()">
-                    <input type="time" id="histHoraDesde" onchange="onHoraChange()">
+                    <input type="date" id="histFechaDesde">
+                    <input type="time" id="histHoraDesde">
                 </div>
                 <div class="filter-group">
                     <label>Hasta:</label>
-                    <input type="date" id="histFechaHasta" onchange="onHastaChange()">
-                    <input type="time" id="histHoraHasta" onchange="onHoraChange()">
+                    <input type="date" id="histFechaHasta">
+                    <input type="time" id="histHoraHasta">
                 </div>
                 <button class="filter-btn" onclick="filtrarHistorico()">Filtrar</button>
                 <button class="filter-btn secondary" onclick="limpiarFiltroHist()">Ver Todo</button>
@@ -299,97 +289,6 @@ function cargarHistorial(){
 }
 
 var histDataCache=[];
-
-/* ═══════════════════════════════════════════════════════
-   VALIDACION DE RANGO DE FECHAS
-   ═══════════════════════════════════════════════════════ */
-
-function mostrarErrorFiltro(msg){
-    var el=document.getElementById('filterError');
-    document.getElementById('filterErrorMsg').textContent=msg;
-    el.classList.add('show');
-}
-function ocultarErrorFiltro(){
-    document.getElementById('filterError').classList.remove('show');
-    ['histFechaDesde','histFechaHasta','histHoraDesde','histHoraHasta'].forEach(function(id){
-        document.getElementById(id).classList.remove('input-error');
-    });
-}
-
-// Al cambiar "Desde": el minimo de "Hasta" se actualiza automaticamente
-function onDesdeChange(){
-    var desde=document.getElementById('histFechaDesde').value;
-    var hasta=document.getElementById('histFechaHasta');
-    if(desde){
-        hasta.min=desde;
-        // Si "Hasta" ya tenia un valor anterior al nuevo "Desde", lo limpiamos
-        if(hasta.value && hasta.value < desde){
-            hasta.value='';
-            document.getElementById('histHoraHasta').value='';
-        }
-    } else {
-        hasta.removeAttribute('min');
-    }
-    ocultarErrorFiltro();
-}
-
-// Al cambiar "Hasta": el maximo de "Desde" se actualiza automaticamente
-function onHastaChange(){
-    var hasta=document.getElementById('histFechaHasta').value;
-    var desde=document.getElementById('histFechaDesde');
-    if(hasta){
-        desde.max=hasta;
-        if(desde.value && desde.value > hasta){
-            desde.value='';
-            document.getElementById('histHoraDesde').value='';
-        }
-    } else {
-        desde.removeAttribute('max');
-    }
-    ocultarErrorFiltro();
-}
-
-// Al cambiar horas, solo limpiamos el error (la validacion completa ocurre al filtrar)
-function onHoraChange(){
-    ocultarErrorFiltro();
-}
-
-function validarRango(desde,hasta,horaDesde,horaHasta){
-    // Caso 1: ambas fechas presentes -> "Desde" no puede ser mayor que "Hasta"
-    if(desde && hasta){
-        if(desde > hasta){
-            document.getElementById('histFechaDesde').classList.add('input-error');
-            document.getElementById('histFechaHasta').classList.add('input-error');
-            mostrarErrorFiltro('La fecha "Desde" no puede ser posterior a la fecha "Hasta".');
-            return false;
-        }
-        // Caso 2: misma fecha -> validar horas
-        if(desde === hasta && horaDesde && horaHasta){
-            if(horaDesde >= horaHasta){
-                document.getElementById('histHoraDesde').classList.add('input-error');
-                document.getElementById('histHoraHasta').classList.add('input-error');
-                mostrarErrorFiltro('En la misma fecha, la hora "Desde" debe ser anterior a la hora "Hasta".');
-                return false;
-            }
-        }
-    }
-    // Caso 3: solo hora "Desde" sin fecha "Desde"
-    if(horaDesde && !desde){
-        document.getElementById('histHoraDesde').classList.add('input-error');
-        mostrarErrorFiltro('Debes seleccionar una fecha "Desde" para usar la hora de inicio.');
-        return false;
-    }
-    // Caso 4: solo hora "Hasta" sin fecha "Hasta"
-    if(horaHasta && !hasta){
-        document.getElementById('histHoraHasta').classList.add('input-error');
-        mostrarErrorFiltro('Debes seleccionar una fecha "Hasta" para usar la hora de fin.');
-        return false;
-    }
-    return true;
-}
-
-/* ═══════════════════════════════════════════════════════ */
-
 function cargarHistorico(filtroDesde,filtroHasta,filtroHoraDesde,filtroHoraHasta){
     var xhr=new XMLHttpRequest();xhr.open('GET','/api/ubicaciones?limit=500');
     xhr.onload=function(){
@@ -494,12 +393,6 @@ function filtrarHistorico(){
     var hasta=document.getElementById('histFechaHasta').value;
     var horaDesde=document.getElementById('histHoraDesde').value;
     var horaHasta=document.getElementById('histHoraHasta').value;
-
-    ocultarErrorFiltro();
-
-    // Validar antes de filtrar
-    if(!validarRango(desde,hasta,horaDesde,horaHasta)) return;
-
     if(histDataCache.length>0) renderHistorico(desde,hasta,horaDesde,horaHasta);
     else cargarHistorico(desde,hasta,horaDesde,horaHasta);
 }
@@ -509,10 +402,6 @@ function limpiarFiltroHist(){
     document.getElementById('histFechaHasta').value='';
     document.getElementById('histHoraDesde').value='';
     document.getElementById('histHoraHasta').value='';
-    // Remover restricciones dinamicas de min/max
-    document.getElementById('histFechaDesde').removeAttribute('max');
-    document.getElementById('histFechaHasta').removeAttribute('min');
-    ocultarErrorFiltro();
     if(histDataCache.length>0) renderHistorico();
     else cargarHistorico();
 }
