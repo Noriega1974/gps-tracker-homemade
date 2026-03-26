@@ -2,7 +2,7 @@ name: Deploy
 
 on:
   push:
-    branches: [ main, dev ]
+    branches: [ main, dev, devdaniel ]
 
 jobs:
   deploy-dev:
@@ -18,7 +18,7 @@ jobs:
           script: /home/ubuntu/deploy-dev.sh
 
   deploy-devdaniel:
-    if: github.ref == 'refs/heads/dev'
+    if: github.ref == 'refs/heads/devdaniel'
     runs-on: ubuntu-latest
     steps:
       - name: Deploy DEV Daniel
