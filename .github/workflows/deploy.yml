@@ -2,7 +2,7 @@ name: Deploy
 
 on:
   push:
-    branches: [ main, dev, devdaniel ]
+    branches: [ main, dev, devdaniel, devpolo ]
 
 jobs:
   deploy-dev:
@@ -28,7 +28,19 @@ jobs:
           username: ubuntu
           key: ${{ secrets.EC2_KEY_DANIEL }}
           script: /home/ubuntu/deploy-devdaniel.sh
-
+  
+  deploy-devpolo:
+    if: github.ref == 'refs/heads/devpolo'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deploy DEV Polo
+        uses: appleboy/ssh-action@master
+        with:
+          host: gps-tracker.ddns.net
+          username: ubuntu
+          key: ${{ secrets.EC2_KEY_POLO }}
+          script: /home/ubuntu/deploy-devpolo.sh
+          
   deploy-jose:
     if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
