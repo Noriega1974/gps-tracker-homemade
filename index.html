@@ -165,7 +165,27 @@ function toggleTheme(){setTheme(currentTheme==='light'?'dark':'light');}
 function getCS(v){return getComputedStyle(document.documentElement).getPropertyValue(v).trim();}
 (function(){var h=getColombiaHour();setTheme((h>=18.5||h<6)?'dark':'light');})();
 
-function toggleSidebar(){document.getElementById('sidebar').classList.toggle('open');document.getElementById('overlay').classList.toggle('show');}
+function toggleSidebar(){
+    var sidebar = document.getElementById('sidebar');
+    var overlay = document.getElementById('overlay');
+
+    sidebar.classList.toggle('open');
+    overlay.classList.toggle('show');
+
+    var abierto = sidebar.classList.contains('open');
+
+    if(abierto){
+        mapa.dragging.disable();
+        mapa.touchZoom.disable();
+        mapa.doubleClickZoom.disable();
+        mapa.scrollWheelZoom.disable();
+    } else {
+        mapa.dragging.enable();
+        mapa.touchZoom.enable();
+        mapa.doubleClickZoom.enable();
+        mapa.scrollWheelZoom.enable();
+    }
+}
 var mapaHistInit=false,mapaHist,rutaHistPolyline,marcadorHist=null;
 function showView(name,el){
     var views=document.querySelectorAll('.view');for(var i=0;i<views.length;i++)views[i].classList.remove('active');
