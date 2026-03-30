@@ -81,17 +81,8 @@
         .overlay.show{display:block;}
         [data-theme="dark"] .leaflet-tile-pane{filter:brightness(0.7) contrast(1.1) saturate(0.8);}
         [data-theme="dark"] .leaflet-control-zoom a{background:var(--bg2)!important;color:var(--txt1)!important;border-color:var(--brd)!important;}
-        @media(max-width:768px){
-        .sidebar{transform:translateX(calc(-1 * var(--sidebar-w)));}
-        .sidebar.open{transform:translateX(0);}
-        .hamburger{display:flex;}
-        .main{margin-left:0;padding:70px 16px 24px;}
-        .gps-grid{grid-template-columns:1fr;}
-        #mapa,#mapaHist{height:300px;}
-        .overlay{z-index:95;}
-        .sidebar{z-index:100;}
-        .main{position:relative;z-index:1;}
-        }
+        @media(max-width:768px){.sidebar{transform:translateX(calc(-1 * var(--sidebar-w)));}.sidebar.open{transform:translateX(0);}.hamburger{display:flex;}.main{margin-left:0;padding:70px 16px 24px;}.gps-grid{grid-template-columns:1fr;}#mapa,#mapaHist{height:300px;}}
+    </style>
 </head>
 <body>
 <button class="hamburger" onclick="toggleSidebar()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" width="22" height="22"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg></button>
