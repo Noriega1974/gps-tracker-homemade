@@ -420,29 +420,19 @@ function validarRango(desde,hasta,horaDesde,horaHasta){
 /* ═══════════════════════════════════════════════════════ */
 
 function cargarHistorico(filtroDesde, filtroHasta, filtroHoraDesde, filtroHoraHasta) {
-    var url = '/api/ubicaciones?limit=500';
-
-    if (filtroDesde) {
-        var horaI = filtroHoraDesde ? filtroHoraDesde + ':00' : '00:00:00';
-        url += '&desde=' + encodeURIComponent(filtroDesde + 'T' + horaI);
-    }
-    if (filtroHasta) {
-        var horaF = filtroHoraHasta ? filtroHoraHasta + ':59' : '23:59:59';
-        url += '&hasta=' + encodeURIComponent(filtroHasta + 'T' + horaF);
-    }
-
     var xhr = new XMLHttpRequest();
-    xhr.open('GET', url);
+    xhr.open('GET', '/api/ubicaciones?limit=500');
     xhr.onload = function() {
         if (xhr.status === 200) {
             var data = JSON.parse(xhr.responseText);
-            histDataCache = Array.isArray(data) ? data.slice().reverse() : [];
-            renderHistorico(filtroDesde, filtroHasta, filtroHoraDesde, filtroHoraHasta);
+            if (Array.isArray(data) && data.length > 0) {
+                histDataCache = data.slice().reverse();
+                renderHistorico(filtroDesde, filtroHasta, filtroHoraDesde, filtroHoraHasta);
+            }
         }
     };
     xhr.send();
 }
-
 function renderHistorico(filtroDesde, filtroHasta, filtroHoraDesde, filtroHoraHasta) {
     var tbody = document.getElementById('histBody');
     tbody.innerHTML = '';
