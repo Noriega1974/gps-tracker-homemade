@@ -146,14 +146,14 @@ function iniciarWeb() {
             if (req.query.desde) {
                 const d = new Date(req.query.desde);
                 if (!isNaN(d)) {
-                    conditions.push('timestamp_gps >= $' + idx++);
+                    conditions.push('timestamp_gps::timestamp >= $' + idx++);
                     params.push(new Date(d.getTime() + 5 * 3600000).toISOString());
                 }
             }
             if (req.query.hasta) {
                 const d = new Date(req.query.hasta);
                 if (!isNaN(d)) {
-                    conditions.push('timestamp_gps <= $' + idx++);
+                    conditions.push('timestamp_gps::timestamp <= $' + idx++);
                     params.push(new Date(d.getTime() + 5 * 3600000).toISOString());
                 }
             }
