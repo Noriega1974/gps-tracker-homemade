@@ -299,7 +299,6 @@ function cargarHistorial(){
 }
 
 var histDataCache=[];
-var renderVersion = 0;
     
 /* ═══════════════════════════════════════════════════════
    VALIDACION DE RANGO DE FECHAS
@@ -499,19 +498,16 @@ function renderHistorico(filtroDesde, filtroHasta, filtroHoraDesde, filtroHoraHa
     else mapaHist.setView(last, 15);
 
     if (puntosRuta.length >= 2) {
-        var miVersion = ++renderVersion; // captura versión de este render
         var coords = puntosRuta.map(function(p) { return p[1].toFixed(6) + ',' + p[0].toFixed(6); }).join(';');
         fetch('https://router.project-osrm.org/route/v1/driving/' + coords + '?overview=full&geometries=geojson')
             .then(function(r) { return r.json(); })
             .then(function(data) {
-                if (miVersion !== renderVersion) return; // render más nuevo existe, ignorar
                 var lls = (data.code === 'Ok' && data.routes.length)
                     ? data.routes[0].geometry.coordinates.map(function(c) { return [c[1], c[0]]; })
                     : puntosRuta;
                 rutaHistPolyline.setLatLngs(lls);
                 rutaHistPolyline.setStyle({ color: routeColor, weight: 5, opacity: 0.85 });
             }).catch(function() {
-                if (miVersion !== renderVersion) return; // ignorar también en error
                 rutaHistPolyline.setLatLngs(puntosRuta);
                 rutaHistPolyline.setStyle({ color: routeColor, weight: 4, opacity: 0.7 });
             });
