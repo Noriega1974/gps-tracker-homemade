@@ -184,7 +184,14 @@ function iniciarWeb() {
             res.status(500).json({ error: err.message });
         }
     });
-
+    
+    app.get('/api/debug-ts', async function(req, res) {
+        const result = await pool.query(
+            'SELECT timestamp_gps, pg_typeof(timestamp_gps) as tipo FROM ubicaciones LIMIT 3'
+        );
+        res.json(result.rows);
+    });
+    
     wss.on('connection', function(ws, req) {
         var clientIP = req.socket.remoteAddress;
         console.log('[WS] Cliente web conectado desde ' + clientIP);
