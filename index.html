@@ -179,7 +179,7 @@ function showView(name,el){
             L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{attribution:'&copy; OpenStreetMap'}).addTo(mapaHist);
             rutaHistPolyline=L.polyline([],{color:getCS('--route'),weight:5}).addTo(mapaHist);
             mapaHistInit=true;
-            cargarHistorico();
+            
         },150);
     }
     if(name==='realtime')setTimeout(function(){mapa.invalidateSize();},150);
