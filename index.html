@@ -451,15 +451,28 @@ function renderHistorico(filtroDesde, filtroHasta, filtroHoraDesde, filtroHoraHa
     if (window.histCircles) window.histCircles.forEach(function(c) { mapaHist.removeLayer(c); });
     window.histCircles = [];
 
-    var datos = histDataCache;
+    // Filtrado cliente como capa de seguridad
+    var datos = [];
+    var totalSinFiltro = histDataCache.length;
+    for (var i = 0; i < histDataCache.length; i++) {
+        var d = histDataCache[i];
+        var fh = extraerFechaHora(d.timestamp_gps || d.fecha_recepcion);
+        if (filtroDesde && fh.fecha < filtroDesde) continue;
+        if (filtroHasta && fh.fecha > filtroHasta) continue;
+        if (filtroHoraDesde && fh.hora.substring(0,5) < filtroHoraDesde) continue;
+        if (filtroHoraHasta && fh.hora.substring(0,5) > filtroHoraHasta) continue;
+        datos.push(d);
+    }
+
     var hayFiltro = filtroDesde || filtroHasta || filtroHoraDesde || filtroHoraHasta;
-    var countText = 'Total de registros: ' + datos.length;
     if (hayFiltro && datos.length === 0) {
         document.getElementById('histCount').textContent = 'No hay registros para el rango seleccionado';
         return;
     }
-    document.getElementById('histCount').textContent = countText;
     if (datos.length === 0) return;
+
+    document.getElementById('histCount').textContent = 'Total de registros: ' + datos.length +
+        (hayFiltro ? ' (de ' + totalSinFiltro + ' totales)' : '');
 
     for (var i = 0; i < datos.length; i++) {
         (function(d, idx) {
