@@ -139,8 +139,30 @@ function iniciarWeb() {
     app.get('/api/ubicaciones', async function(req, res) {
         try {
             const limit = Math.min(parseInt(req.query.limit) || 50, 500);
+            const conditions = [];
+            const params = [];
+            let idx = 1;
+    
+            if (req.query.desde) {
+                const d = new Date(req.query.desde);
+                if (!isNaN(d)) {
+                    conditions.push('timestamp_gps >= $' + idx++);
+                    params.push(new Date(d.getTime() + 5 * 3600000).toISOString());
+                }
+            }
+            if (req.query.hasta) {
+                const d = new Date(req.query.hasta);
+                if (!isNaN(d)) {
+                    conditions.push('timestamp_gps <= $' + idx++);
+                    params.push(new Date(d.getTime() + 5 * 3600000).toISOString());
+                }
+            }
+    
+            params.push(limit);
+            const where = conditions.length ? 'WHERE ' + conditions.join(' AND ') : '';
             const result = await pool.query(
-                'SELECT * FROM ubicaciones ORDER BY id DESC LIMIT $1', [limit]
+                'SELECT * FROM ubicaciones ' + where + ' ORDER BY id DESC LIMIT $' + idx,
+                params
             );
             res.json(result.rows);
         } catch (err) {
