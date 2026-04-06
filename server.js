@@ -136,6 +136,7 @@ function iniciarWeb() {
 
     app.use(express.static(path.join(__dirname, 'public')));
 
+    // Ultimo punto (para real-time al cargar)
     app.get('/api/ubicaciones', async function(req, res) {
         try {
             const limit = Math.min(parseInt(req.query.limit) || 50, 500);
@@ -144,6 +145,47 @@ function iniciarWeb() {
             );
             res.json(result.rows);
         } catch (err) {
+            res.status(500).json({ error: err.message });
+        }
+    });
+
+    // Historico filtrado por fecha — el filtro se hace en SQL, no en el cliente
+    // Params: desde (YYYY-MM-DD), hasta (YYYY-MM-DD), horaDesde (HH:MM), horaHasta (HH:MM)
+    app.get('/api/historico', async function(req, res) {
+        try {
+            var desde = req.query.desde || null;
+            var hasta = req.query.hasta || null;
+            var horaDesde = req.query.horaDesde || null;
+            var horaHasta = req.query.horaHasta || null;
+
+            // timestamp_gps esta en UTC, Colombia es UTC-5
+            // El usuario elige fecha/hora en Colombia, sumamos 5h para comparar con UTC
+            var conditions = [];
+            var params = [];
+            var idx = 1;
+
+            if (desde) {
+                var tsDesde = desde + ' ' + (horaDesde ? horaDesde + ':00' : '00:00:00');
+                conditions.push("timestamp_gps >= ($" + idx + "::timestamp + interval '5 hours')");
+                params.push(tsDesde);
+                idx++;
+            }
+
+            if (hasta) {
+                var tsHasta = hasta + ' ' + (horaHasta ? horaHasta + ':00' : '23:59:59');
+                conditions.push("timestamp_gps <= ($" + idx + "::timestamp + interval '5 hours')");
+                params.push(tsHasta);
+                idx++;
+            }
+
+            var where = conditions.length > 0 ? ' WHERE ' + conditions.join(' AND ') : '';
+            var sql = 'SELECT * FROM ubicaciones' + where + ' ORDER BY id ASC LIMIT 500';
+
+            console.log('[HIST] SQL:', sql, '| Params:', params);
+            var result = await pool.query(sql, params);
+            res.json(result.rows);
+        } catch (err) {
+            console.error('[HIST] Error:', err.message);
             res.status(500).json({ error: err.message });
         }
     });
