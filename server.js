@@ -151,8 +151,6 @@ function iniciarWeb() {
 
     // Historico filtrado por fecha — el filtro se hace en SQL, no en el cliente
     // Params: desde (YYYY-MM-DD), hasta (YYYY-MM-DD), horaDesde (HH:MM), horaHasta (HH:MM)
-    // timestamp_gps en BD esta en UTC; el usuario filtra en hora Colombia (UTC-5)
-    // Casteamos timestamp_gps a timestamp y restamos 5h para comparar en hora Colombia
     app.get('/api/historico', async function(req, res) {
         try {
             var desde = req.query.desde || null;
@@ -164,18 +162,16 @@ function iniciarWeb() {
             var params = [];
             var idx = 1;
 
-            // timestamp_gps::timestamp convierte texto a timestamp si es necesario
-            // Restamos 5h para pasar de UTC a hora Colombia
             if (desde) {
                 var tsDesde = desde + ' ' + (horaDesde ? horaDesde + ':00' : '00:00:00');
-                conditions.push("(timestamp_gps::timestamp - interval '5 hours') >= $" + idx + "::timestamp");
+                conditions.push("timestamp_gps >= $" + idx);
                 params.push(tsDesde);
                 idx++;
             }
 
             if (hasta) {
                 var tsHasta = hasta + ' ' + (horaHasta ? horaHasta + ':00' : '23:59:59');
-                conditions.push("(timestamp_gps::timestamp - interval '5 hours') <= $" + idx + "::timestamp");
+                conditions.push("timestamp_gps <= $" + idx);
                 params.push(tsHasta);
                 idx++;
             }

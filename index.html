@@ -209,8 +209,16 @@ var mapa=L.map('mapa').setView([10.9685,-74.7813],13);
 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{attribution:'&copy; OpenStreetMap'}).addTo(mapa);
 var marcador=null,rutaPolyline=L.polyline([],{color:getCS('--route'),weight:5}).addTo(mapa),ultimoPunto=null;
 
+// Base path para que las rutas API funcionen tanto en / como en /dev/, /devdaniel/, etc.
+var basePath = (function(){
+    var p = window.location.pathname;
+    // Si estamos en /dev/ o /devX/, usar esa ruta como base
+    var match = p.match(/^(\/dev[^\/]*\/)/);
+    return match ? match[1] : '/';
+})();
+
 // Cargar ultimo punto al iniciar (real-time)
-fetch('/api/ubicaciones?limit=1').then(function(r){return r.json();}).then(function(data){
+fetch(basePath + 'api/ubicaciones?limit=1').then(function(r){return r.json();}).then(function(data){
     if(Array.isArray(data)&&data.length>0){
         var d=data[0],p=[parseFloat(d.latitud),parseFloat(d.longitud)];
         marcador=L.marker(p).addTo(mapa);mapa.setView(p,15);ultimoPunto=p;
@@ -385,7 +393,7 @@ function filtrarHistorico(){
     if(hasta) params.push('hasta='+hasta);
     if(horaDesde) params.push('horaDesde='+horaDesde);
     if(horaHasta) params.push('horaHasta='+horaHasta);
-    var url='/api/historico?'+params.join('&');
+    var url=basePath + 'api/historico?'+params.join('&');
 
     // Mostrar loading
     document.getElementById('histLoading').classList.add('show');
