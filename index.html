@@ -254,7 +254,10 @@ function obtenerRutaOSRM(desde,hasta,cb){
 
 function limpiarRuta(){
     rutaPolyline.setLatLngs([]);
+    // Limpiar circleMarkers de puntos GPS
+    if(window.rtCircles){window.rtCircles.forEach(function(c){mapa.removeLayer(c);});window.rtCircles=[];}
 }
+window.rtCircles=[];
 
 function distanciaM(a,b){
     var R=6371000,dLat=(b[0]-a[0])*Math.PI/180,dLon=(b[1]-a[1])*Math.PI/180;
@@ -267,6 +270,10 @@ function actualizarMapa(lat,lon){
     var p=[parseFloat(lat),parseFloat(lon)];
     if(!marcador){marcador=L.marker(p).addTo(mapa);}else{marcador.setLatLng(p);}
     mapa.setView(p,mapa.getZoom());
+    // Dibujar circleMarker en el punto GPS recibido
+    var routeColor=getCS('--route');
+    var c=L.circleMarker(p,{radius:6,color:routeColor,fillColor:routeColor,fillOpacity:0.9,weight:2}).addTo(mapa);
+    window.rtCircles.push(c);
     if(ultimoPunto){
         var prevPunto=ultimoPunto;
         obtenerRutaOSRM(prevPunto,p,function(coords){
