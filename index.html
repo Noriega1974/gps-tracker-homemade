@@ -207,6 +207,15 @@ function showView(name,el){
 
 var mapa=L.map('mapa').setView([10.9685,-74.7813],13);
 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{attribution:'&copy; OpenStreetMap'}).addTo(mapa);
+
+// Fix iconos Leaflet (bug conocido con CDN + bundlers)
+delete L.Icon.Default.prototype._getIconUrl;
+L.Icon.Default.mergeOptions({
+    iconRetinaUrl:'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
+    iconUrl:'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
+    shadowUrl:'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png'
+});
+
 var marcador=null,rutaPolyline=L.polyline([],{color:getCS('--route'),weight:5}).addTo(mapa),ultimoPunto=null;
 
 // Base path para que las rutas API funcionen tanto en / como en /dev/, /devdaniel/, etc.
@@ -228,11 +237,19 @@ fetch(basePath + 'api/ubicaciones?limit=1').then(function(r){return r.json();}).
 
 function obtenerRutaOSRM(desde,hasta,cb){
     var url='https://router.project-osrm.org/route/v1/driving/'+desde[1]+','+desde[0]+';'+hasta[1]+','+hasta[0]+'?overview=full&geometries=geojson';
-    fetch(url).then(function(r){return r.json();}).then(function(d){
+    var timeout=setTimeout(function(){cb([desde,hasta]);},8000); // fallback linea recta si tarda mas de 8s
+    fetch(url).then(function(r){
+        if(!r.ok) throw new Error('OSRM '+r.status);
+        return r.json();
+    }).then(function(d){
+        clearTimeout(timeout);
         if(d.code==='Ok'&&d.routes.length>0)
             cb(d.routes[0].geometry.coordinates.map(function(c){return[c[1],c[0]];}));
         else cb([desde,hasta]);
-    }).catch(function(){cb([desde,hasta]);});
+    }).catch(function(){
+        clearTimeout(timeout);
+        cb([desde,hasta]);
+    });
 }
 
 function limpiarRuta(){
@@ -251,8 +268,11 @@ function actualizarMapa(lat,lon){
     if(!marcador){marcador=L.marker(p).addTo(mapa);}else{marcador.setLatLng(p);}
     mapa.setView(p,mapa.getZoom());
     if(ultimoPunto){
-        obtenerRutaOSRM(ultimoPunto,p,function(coords){
-            var pts=rutaPolyline.getLatLngs();coords.forEach(function(c){pts.push(c);});rutaPolyline.setLatLngs(pts);
+        var prevPunto=ultimoPunto;
+        obtenerRutaOSRM(prevPunto,p,function(coords){
+            var pts=rutaPolyline.getLatLngs();
+            coords.forEach(function(c){pts.push(c);});
+            rutaPolyline.setLatLngs(pts);
         });
     }
     ultimoPunto=p;
