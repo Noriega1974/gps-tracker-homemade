@@ -436,7 +436,8 @@ function checkFiltroListo() {
     var hasta = document.getElementById('histFechaHasta');
     var horaDesde = document.getElementById('histHoraDesde');
     var horaHasta = document.getElementById('histHoraHasta');
-    document.getElementById('btnFiltrar').disabled = !(desde && hasta && horaDesde && horaHasta);
+    var listo  = desde !== '' && hasta !== '' && hDesde !== '' && hHasta !== '';
+    document.getElementById('btnFiltrar').disabled = !listo;
 }
 
 /* ═══════════════════════════════════════════════════════
