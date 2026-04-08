@@ -400,7 +400,7 @@ function validarRango(desde,hasta,horaDesde,horaHasta){
             return false;
         }
         if(desde === hasta && horaDesde && horaHasta){
-            if(horaDesde >= horaHasta){
+            if(horaDesde > horaHasta){
                 document.getElementById('histHoraDesde').classList.add('input-error');
                 document.getElementById('histHoraHasta').classList.add('input-error');
                 mostrarErrorFiltro('En la misma fecha, la hora "Desde" debe ser anterior a la hora "Hasta".');
