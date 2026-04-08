@@ -7,6 +7,7 @@
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>📡</text></svg>">
     <style>
         :root { --sidebar-w: 260px; --t: 300ms; }
         [data-theme="light"] {--bg1:#FAFAF5;--bg2:#F0EDE3;--bg-card:#FFFFFF;--bg-input:#F5F3EC;--brd:#D3D1C7;--brd-lt:#E8E6DD;--txt1:#1A1A18;--txt2:#6B6B5E;--txt3:#9B9B8E;--accent:#0D9488;--accent-h:#0B7E73;--accent-lt:rgba(13,148,136,0.1);--route:#0D9488;--marker:#F97316;--alert:#EF4444;--side-bg:linear-gradient(180deg,#0D9488 0%,#0B7E73 100%);--side-txt:#fff;--side-hov:rgba(255,255,255,0.15);--side-act:rgba(255,255,255,0.25);--side-sec:rgba(255,255,255,0.6);--sh-sm:0 1px 3px rgba(0,0,0,0.06);--sh-md:0 4px 16px rgba(0,0,0,0.08);--status-on:#10B981;--status-off:#EF4444;}
@@ -77,6 +78,7 @@
         .filter-bar input[type="time"].input-error{border-color:var(--alert)!important;}
         .filter-btn{padding:8px 18px;border:none;border-radius:8px;background:var(--accent);color:#fff;font-family:'Outfit',sans-serif;font-size:13px;font-weight:600;cursor:pointer;transition:background 0.2s;}
         .filter-btn:hover{background:var(--accent-h);}
+        .filter-btn:disabled{opacity:0.4;cursor:not-allowed;pointer-events:none;}
         .filter-btn.secondary{background:var(--bg-input);color:var(--txt2);border:1px solid var(--brd);}
         .filter-btn.secondary:hover{background:var(--brd);}
         .filter-group{display:flex;align-items:center;gap:8px;padding:10px 14px;background:var(--bg-input);border:1px solid var(--brd-lt);border-radius:10px;}
@@ -154,14 +156,14 @@
                 <div class="filter-group">
                     <label>Desde:</label>
                     <input type="date" id="histFechaDesde" onchange="onDesdeChange()">
-                    <input type="time" id="histHoraDesde" onchange="onHoraChange()">
+                    <input type="time" id="histHoraDesde"  onchange="onHoraChange()">
                 </div>
                 <div class="filter-group">
                     <label>Hasta:</label>
                     <input type="date" id="histFechaHasta" onchange="onHastaChange()">
-                    <input type="time" id="histHoraHasta" onchange="onHoraChange()">
+                    <input type="time" id="histHoraHasta"  onchange="onHoraChange()">
                 </div>
-                <button class="filter-btn" onclick="filtrarHistorico()">Filtrar</button>
+                <button class="filter-btn" id="btnFiltrar" onclick="filtrarHistorico()" disabled>Filtrar</button>
                 <button class="filter-btn secondary" onclick="limpiarFiltroHist()">Limpiar</button>
             </div>
         </div>
@@ -221,7 +223,6 @@ var marcador=null,rutaPolyline=L.polyline([],{color:getCS('--route'),weight:5}).
 // Base path para que las rutas API funcionen tanto en / como en /dev/, /devdaniel/, etc.
 var basePath = (function(){
     var p = window.location.pathname;
-    // Si estamos en /dev/ o /devX/, usar esa ruta como base
     var match = p.match(/^(\/dev[^\/]*\/)/);
     return match ? match[1] : '/';
 })();
@@ -237,7 +238,7 @@ fetch(basePath + 'api/ubicaciones?limit=1').then(function(r){return r.json();}).
 
 function obtenerRutaOSRM(desde,hasta,cb){
     var url='https://router.project-osrm.org/route/v1/driving/'+desde[1]+','+desde[0]+';'+hasta[1]+','+hasta[0]+'?overview=full&geometries=geojson';
-    var timeout=setTimeout(function(){cb([desde,hasta]);},8000); // fallback linea recta si tarda mas de 8s
+    var timeout=setTimeout(function(){cb([desde,hasta]);},8000);
     fetch(url).then(function(r){
         if(!r.ok) throw new Error('OSRM '+r.status);
         return r.json();
@@ -254,7 +255,6 @@ function obtenerRutaOSRM(desde,hasta,cb){
 
 function limpiarRuta(){
     rutaPolyline.setLatLngs([]);
-    // Limpiar circleMarkers de puntos GPS
     if(window.rtCircles){window.rtCircles.forEach(function(c){mapa.removeLayer(c);});window.rtCircles=[];}
 }
 window.rtCircles=[];
@@ -270,7 +270,6 @@ function actualizarMapa(lat,lon){
     var p=[parseFloat(lat),parseFloat(lon)];
     if(!marcador){marcador=L.marker(p).addTo(mapa);}else{marcador.setLatLng(p);}
     mapa.setView(p,mapa.getZoom());
-    // Dibujar circleMarker en el punto GPS recibido
     var routeColor=getCS('--route');
     var c=L.circleMarker(p,{radius:6,color:routeColor,fillColor:routeColor,fillOpacity:0.9,weight:2}).addTo(mapa);
     window.rtCircles.push(c);
@@ -318,6 +317,18 @@ function actualizarGPS(d){
 }
 
 /* ═══════════════════════════════════════════════════════
+   HABILITAR / DESHABILITAR BOTON FILTRAR
+   ═══════════════════════════════════════════════════════ */
+
+function checkFiltroListo(){
+    var desde  = document.getElementById('histFechaDesde').value.trim();
+    var hasta  = document.getElementById('histFechaHasta').value.trim();
+    var hDesde = document.getElementById('histHoraDesde').value.trim();
+    var hHasta = document.getElementById('histHoraHasta').value.trim();
+    document.getElementById('btnFiltrar').disabled = !(desde !== '' && hasta !== '' && hDesde !== '' && hHasta !== '');
+}
+
+/* ═══════════════════════════════════════════════════════
    VALIDACION DE RANGO DE FECHAS
    ═══════════════════════════════════════════════════════ */
 
@@ -346,6 +357,7 @@ function onDesdeChange(){
         hasta.removeAttribute('min');
     }
     ocultarErrorFiltro();
+    checkFiltroListo();
 }
 
 function onHastaChange(){
@@ -353,7 +365,7 @@ function onHastaChange(){
     var desde=document.getElementById('histFechaDesde');
     if(hasta){
         desde.max=hasta;
-        if(desde.value && desde.value > hasta){
+        if(desde.value&&desde.value>hasta){
             desde.value='';
             document.getElementById('histHoraDesde').value='';
         }
@@ -361,10 +373,25 @@ function onHastaChange(){
         desde.removeAttribute('max');
     }
     ocultarErrorFiltro();
+    checkFiltroListo();
 }
 
 function onHoraChange(){
+    const desde=document.getElementById('histFechaDesde');
+    const hasta=document.getElementById('histFechaHasta');
+    const horaDesde=document.getElementById('histHoraDesde');
+    const horaHasta=document.getElementById('histHoraHasta');
+    if(desde.value===hasta.value&&desde.value!==""){
+        horaHasta.min=horaDesde.value;
+        horaDesde.max=horaHasta.value;
+        if(horaHasta.value<horaDesde.value&&horaHasta.value!==""){horaHasta.value=horaDesde.value;}
+        if(horaDesde.value>horaHasta.value&&horaHasta.value!==""){horaDesde.value=horaHasta.value;}
+    } else {
+        horaHasta.removeAttribute('min');
+        horaDesde.removeAttribute('max');
+    }
     ocultarErrorFiltro();
+    checkFiltroListo();
 }
 
 function validarRango(desde,hasta,horaDesde,horaHasta){
@@ -376,7 +403,7 @@ function validarRango(desde,hasta,horaDesde,horaHasta){
             return false;
         }
         if(desde === hasta && horaDesde && horaHasta){
-            if(horaDesde >= horaHasta){
+            if(horaDesde > horaHasta){
                 document.getElementById('histHoraDesde').classList.add('input-error');
                 document.getElementById('histHoraHasta').classList.add('input-error');
                 mostrarErrorFiltro('En la misma fecha, la hora "Desde" debe ser anterior a la hora "Hasta".');
@@ -414,7 +441,6 @@ function filtrarHistorico(){
     ocultarErrorFiltro();
     if(!validarRango(desde,hasta,horaDesde,horaHasta)) return;
 
-    // Construir URL con query params para el nuevo endpoint
     var params=[];
     if(desde) params.push('desde='+desde);
     if(hasta) params.push('hasta='+hasta);
@@ -422,7 +448,6 @@ function filtrarHistorico(){
     if(horaHasta) params.push('horaHasta='+horaHasta);
     var url=basePath + 'api/historico?'+params.join('&');
 
-    // Mostrar loading
     document.getElementById('histLoading').classList.add('show');
     document.getElementById('histCount').textContent='Consultando...';
 
@@ -521,12 +546,12 @@ function limpiarFiltroHist(){
     document.getElementById('histFechaDesde').removeAttribute('max');
     document.getElementById('histFechaHasta').removeAttribute('min');
     ocultarErrorFiltro();
-    // Limpiar mapa y tabla
     var tbody=document.getElementById('histBody');tbody.innerHTML='';
     if(rutaHistPolyline)rutaHistPolyline.setLatLngs([]);
     if(marcadorHist&&mapaHist){mapaHist.removeLayer(marcadorHist);marcadorHist=null;}
     if(window.histCircles){window.histCircles.forEach(function(c){mapaHist.removeLayer(c);});window.histCircles=[];}
     document.getElementById('histCount').textContent='Selecciona un rango de fechas y presiona Filtrar';
+    checkFiltroListo();
 }
 
 conectarWS();
