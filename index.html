@@ -105,6 +105,11 @@
         position: relative;
         z-index: 1;
         }
+        .filter-btn:disabled {
+            opacity: 0.4;
+            cursor: not-allowed;
+            pointer-events: none;
+        }
     </style>
 </head>
 <body>
@@ -154,15 +159,16 @@
             <div class="filter-bar">
                 <div class="filter-group">
                     <label>Desde:</label>
-                    <input type="date" id="histFechaDesde" onchange="onDesdeChange()">
-                    <input type="time" id="histHoraDesde" onchange="onHoraChange()">
+                    <input type="date" id="histFechaDesde" onchange="onDesdeChange(); checkFiltroListo()">
+                    <input type="time" id="histHoraDesde" onchange="onHoraChange(); checkFiltroListo()">
                 </div>
                 <div class="filter-group">
                     <label>Hasta:</label>
-                    <input type="date" id="histFechaHasta" onchange="onHastaChange()">
-                    <input type="time" id="histHoraHasta" onchange="onHoraChange()">
+                    <input type="date" id="histFechaHasta" onchange="onHastaChange(); checkFiltroListo()">
+                    <input type="time" id="histHoraHasta" onchange="onHoraChange(); checkFiltroListo()">
                 </div>
-                <button class="filter-btn" onclick="filtrarHistorico()">Filtrar</button>
+                <!-- Reemplaza el botón Filtrar -->
+                <button class="filter-btn" id="btnFiltrar" onclick="filtrarHistorico()" disabled>Filtrar</button>
                 <button class="filter-btn secondary" onclick="limpiarFiltroHist()">Limpiar</button>
             </div>
         </div>
@@ -366,10 +372,10 @@ function onHastaChange(){
 
 function onHoraChange() {
 
-    const desde = document.getElementById('histFechaDesde');
-    const hasta = document.getElementById('histFechaHasta');
-    const horaDesde = document.getElementById('histHoraDesde');
-    const horaHasta = document.getElementById('histHoraHasta');
+    var desde = document.getElementById('histFechaDesde');
+    var hasta = document.getElementById('histFechaHasta');
+    var horaDesde = document.getElementById('histHoraDesde');
+    var horaHasta = document.getElementById('histHoraHasta');
 
     if (desde.value === hasta.value && desde.value !== "") {
 
@@ -423,6 +429,14 @@ function validarRango(desde,hasta,horaDesde,horaHasta){
         return false;
     }
     return true;
+}
+
+function checkFiltroListo() {
+    var desde = document.getElementById('histFechaDesde');
+    var hasta = document.getElementById('histFechaHasta');
+    var horaDesde = document.getElementById('histHoraDesde');
+    var horaHasta = document.getElementById('histHoraHasta');
+    document.getElementById('btnFiltrar').disabled = !(desde && hasta && horaDesde && horaHasta);
 }
 
 /* ═══════════════════════════════════════════════════════
@@ -551,6 +565,7 @@ function limpiarFiltroHist(){
     if(marcadorHist&&mapaHist){mapaHist.removeLayer(marcadorHist);marcadorHist=null;}
     if(window.histCircles){window.histCircles.forEach(function(c){mapaHist.removeLayer(c);});window.histCircles=[];}
     document.getElementById('histCount').textContent='Selecciona un rango de fechas y presiona Filtrar';
+    checkFiltroListo();
 }
 
 conectarWS();
