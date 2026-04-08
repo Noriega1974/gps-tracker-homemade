@@ -7,6 +7,7 @@
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>📡</text></svg>">
     <style>
         :root { --sidebar-w: 260px; --t: 300ms; }
         [data-theme="light"] {--bg1:#FAFAF5;--bg2:#F0EDE3;--bg-card:#FFFFFF;--bg-input:#F5F3EC;--brd:#D3D1C7;--brd-lt:#E8E6DD;--txt1:#1A1A18;--txt2:#6B6B5E;--txt3:#9B9B8E;--accent:#0D9488;--accent-h:#0B7E73;--accent-lt:rgba(13,148,136,0.1);--route:#0D9488;--marker:#F97316;--alert:#EF4444;--side-bg:linear-gradient(180deg,#0D9488 0%,#0B7E73 100%);--side-txt:#fff;--side-hov:rgba(255,255,255,0.15);--side-act:rgba(255,255,255,0.25);--side-sec:rgba(255,255,255,0.6);--sh-sm:0 1px 3px rgba(0,0,0,0.06);--sh-md:0 4px 16px rgba(0,0,0,0.08);--status-on:#10B981;--status-off:#EF4444;}
@@ -46,7 +47,15 @@
         .card-title{font-size:13px;font-weight:600;color:var(--txt2);text-transform:uppercase;letter-spacing:1px;margin-bottom:14px;display:flex;align-items:center;gap:8px;}
         .card-title::before{content:'';width:3px;height:16px;border-radius:2px;background:var(--accent);}
         .map-wrap{max-width:900px;margin:0 auto;}
-        #mapa,#mapaHist{width:100%;height:480px;border-radius:12px;border:1px solid var(--brd);overflow:hidden;}
+        #mapa,#mapaHist{
+        width:100%;
+        height:480px;
+        border-radius:12px;
+        border:1px solid var(--brd);
+        overflow:hidden;
+        position: relative;
+        z-index: 1;
+        }
         .gps-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
         .gps-item{display:flex;justify-content:space-between;align-items:center;padding:12px 16px;background:var(--bg-input);border-radius:10px;border:1px solid var(--brd-lt);transition:background var(--t);}
         .gps-item-label{font-size:13px;color:var(--txt2);font-weight:500;}
@@ -79,9 +88,23 @@
         .btn-accent:hover{background:var(--accent-h);}
         .overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.4);z-index:90;}
         .overlay.show{display:block;}
+        .loading-msg{display:none;align-items:center;gap:8px;padding:10px 14px;border-radius:10px;background:var(--accent-lt);color:var(--accent);font-size:13px;font-weight:500;margin-bottom:12px;}
+        .loading-msg.show{display:flex;}
+        .loading-msg svg{animation:spin 1s linear infinite;}
+        @keyframes spin{from{transform:rotate(0deg);}to{transform:rotate(360deg);}}
         [data-theme="dark"] .leaflet-tile-pane{filter:brightness(0.7) contrast(1.1) saturate(0.8);}
         [data-theme="dark"] .leaflet-control-zoom a{background:var(--bg2)!important;color:var(--txt1)!important;border-color:var(--brd)!important;}
         @media(max-width:768px){.sidebar{transform:translateX(calc(-1 * var(--sidebar-w)));}.sidebar.open{transform:translateX(0);}.hamburger{display:flex;}.main{margin-left:0;padding:70px 16px 24px;}.gps-grid{grid-template-columns:1fr;}#mapa,#mapaHist{height:300px;}}
+        .sidebar {
+        z-index: 9999 !important;
+        }
+        .overlay {
+        z-index: 9998 !important;
+        }
+        .main {
+        position: relative;
+        z-index: 1;
+        }
     </style>
 </head>
 <body>
@@ -93,7 +116,6 @@
         <div class="side-section-title">Vistas</div>
         <div class="side-item active" onclick="showView('realtime',this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>Real-Time</div>
         <div class="side-item" onclick="showView('historical',this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 3v18h18"/><polyline points="18 9 12 15 9 12 3 18"/></svg>Historical View</div>
-        <div class="side-item" onclick="showView('sniffer',this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>Sniffer UDP</div>
     </div>
     <div class="side-section">
         <div class="side-section-title">Rastreadores</div>
@@ -121,10 +143,13 @@
         <div class="view-title">Historical View</div>
         <div class="card">
             <div class="card-title">Filtrar por Fecha y Hora</div>
-            <!-- MENSAJE DE ERROR DE VALIDACION -->
             <div class="filter-error" id="filterError">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" width="18" height="18"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
                 <span id="filterErrorMsg">Rango de fechas invalido.</span>
+            </div>
+            <div class="loading-msg" id="histLoading">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" width="18" height="18"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>
+                <span>Consultando registros...</span>
             </div>
             <div class="filter-bar">
                 <div class="filter-group">
@@ -138,15 +163,11 @@
                     <input type="time" id="histHoraHasta" onchange="onHoraChange()">
                 </div>
                 <button class="filter-btn" onclick="filtrarHistorico()">Filtrar</button>
-                <button class="filter-btn secondary" onclick="limpiarFiltroHist()">Ver Todo</button>
+                <button class="filter-btn secondary" onclick="limpiarFiltroHist()">Limpiar</button>
             </div>
         </div>
         <div class="card map-wrap" style="padding:0;overflow:hidden;"><div id="mapaHist"></div></div>
-        <div class="card"><div class="card-title">Registros Historicos</div><p class="pkt-count" id="histCount">Total de registros: 0</p><div class="table-wrap"><table><thead><tr><th>No.</th><th>Fecha</th><th>Hora (COL)</th><th>Latitud</th><th>Longitud</th><th>Protocolo</th></tr></thead><tbody id="histBody"></tbody></table></div></div>
-    </div>
-    <div class="view" id="view-sniffer">
-        <div class="view-title"><span>Sniffer UDP</span><span class="status-badge off" id="snifferBadge"><span class="status-dot"></span><span id="snifferStatusText">Desconectado</span></span></div>
-        <div class="card"><div class="card-title">Captura de Paquetes</div><p class="pkt-count" id="contador">Paquetes capturados: 0</p><div class="table-wrap"><table><thead><tr><th>No.</th><th>Fecha</th><th>Time (COL)</th><th>Source</th><th>Protocol</th><th>Info</th></tr></thead><tbody id="dataBody"></tbody></table></div></div>
+        <div class="card"><div class="card-title">Registros Historicos</div><p class="pkt-count" id="histCount">Selecciona un rango de fechas y presiona Filtrar</p><div class="table-wrap"><table><thead><tr><th>No.</th><th>Fecha</th><th>Hora (COL)</th><th>Latitud</th><th>Longitud</th><th>Protocolo</th></tr></thead><tbody id="histBody"></tbody></table></div></div>
     </div>
 </div>
 
@@ -179,7 +200,6 @@ function showView(name,el){
             L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{attribution:'&copy; OpenStreetMap'}).addTo(mapaHist);
             rutaHistPolyline=L.polyline([],{color:getCS('--route'),weight:5}).addTo(mapaHist);
             mapaHistInit=true;
-            
         },150);
     }
     if(name==='realtime')setTimeout(function(){mapa.invalidateSize();},150);
@@ -188,9 +208,27 @@ function showView(name,el){
 
 var mapa=L.map('mapa').setView([10.9685,-74.7813],13);
 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{attribution:'&copy; OpenStreetMap'}).addTo(mapa);
+
+// Fix iconos Leaflet (bug conocido con CDN + bundlers)
+delete L.Icon.Default.prototype._getIconUrl;
+L.Icon.Default.mergeOptions({
+    iconRetinaUrl:'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
+    iconUrl:'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
+    shadowUrl:'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png'
+});
+
 var marcador=null,rutaPolyline=L.polyline([],{color:getCS('--route'),weight:5}).addTo(mapa),ultimoPunto=null;
 
-fetch('/api/ubicaciones?limit=1').then(function(r){return r.json();}).then(function(data){
+// Base path para que las rutas API funcionen tanto en / como en /dev/, /devdaniel/, etc.
+var basePath = (function(){
+    var p = window.location.pathname;
+    // Si estamos en /dev/ o /devX/, usar esa ruta como base
+    var match = p.match(/^(\/dev[^\/]*\/)/);
+    return match ? match[1] : '/';
+})();
+
+// Cargar ultimo punto al iniciar (real-time)
+fetch(basePath + 'api/ubicaciones?limit=1').then(function(r){return r.json();}).then(function(data){
     if(Array.isArray(data)&&data.length>0){
         var d=data[0],p=[parseFloat(d.latitud),parseFloat(d.longitud)];
         marcador=L.marker(p).addTo(mapa);mapa.setView(p,15);ultimoPunto=p;
@@ -200,16 +238,27 @@ fetch('/api/ubicaciones?limit=1').then(function(r){return r.json();}).then(funct
 
 function obtenerRutaOSRM(desde,hasta,cb){
     var url='https://router.project-osrm.org/route/v1/driving/'+desde[1]+','+desde[0]+';'+hasta[1]+','+hasta[0]+'?overview=full&geometries=geojson';
-    fetch(url).then(function(r){return r.json();}).then(function(d){
+    var timeout=setTimeout(function(){cb([desde,hasta]);},8000); // fallback linea recta si tarda mas de 8s
+    fetch(url).then(function(r){
+        if(!r.ok) throw new Error('OSRM '+r.status);
+        return r.json();
+    }).then(function(d){
+        clearTimeout(timeout);
         if(d.code==='Ok'&&d.routes.length>0)
             cb(d.routes[0].geometry.coordinates.map(function(c){return[c[1],c[0]];}));
         else cb([desde,hasta]);
-    }).catch(function(){cb([desde,hasta]);});
+    }).catch(function(){
+        clearTimeout(timeout);
+        cb([desde,hasta]);
+    });
 }
 
 function limpiarRuta(){
     rutaPolyline.setLatLngs([]);
+    // Limpiar circleMarkers de puntos GPS
+    if(window.rtCircles){window.rtCircles.forEach(function(c){mapa.removeLayer(c);});window.rtCircles=[];}
 }
+window.rtCircles=[];
 
 function distanciaM(a,b){
     var R=6371000,dLat=(b[0]-a[0])*Math.PI/180,dLon=(b[1]-a[1])*Math.PI/180;
@@ -222,15 +271,20 @@ function actualizarMapa(lat,lon){
     var p=[parseFloat(lat),parseFloat(lon)];
     if(!marcador){marcador=L.marker(p).addTo(mapa);}else{marcador.setLatLng(p);}
     mapa.setView(p,mapa.getZoom());
+    // Dibujar circleMarker en el punto GPS recibido
+    var routeColor=getCS('--route');
+    var c=L.circleMarker(p,{radius:6,color:routeColor,fillColor:routeColor,fillOpacity:0.9,weight:2}).addTo(mapa);
+    window.rtCircles.push(c);
     if(ultimoPunto){
-        obtenerRutaOSRM(ultimoPunto,p,function(coords){
-            var pts=rutaPolyline.getLatLngs();coords.forEach(function(c){pts.push(c);});rutaPolyline.setLatLngs(pts);
+        var prevPunto=ultimoPunto;
+        obtenerRutaOSRM(prevPunto,p,function(coords){
+            var pts=rutaPolyline.getLatLngs();
+            coords.forEach(function(c){pts.push(c);});
+            rutaPolyline.setLatLngs(pts);
         });
     }
     ultimoPunto=p;
 }
-
-var todosLosDatos=[],paqueteNum=0;
 
 function extraerFechaHora(ts){
     if(!ts)return{fecha:'-',hora:'-'};var d=new Date(ts);
@@ -241,9 +295,8 @@ function extraerFechaHora(ts){
 
 function setStatus(on){
     var b=document.getElementById('statusBadge'),t=document.getElementById('statusText');
-    var sb=document.getElementById('snifferBadge'),st=document.getElementById('snifferStatusText');
-    if(on){b.className='status-badge on';t.textContent='Conectado';sb.className='status-badge on';st.textContent='Capturando';}
-    else{b.className='status-badge off';t.textContent='Desconectado';sb.className='status-badge off';st.textContent='Desconectado';}
+    if(on){b.className='status-badge on';t.textContent='Conectado';}
+    else{b.className='status-badge off';t.textContent='Desconectado';}
 }
 
 function conectarWS(){
@@ -251,13 +304,9 @@ function conectarWS(){
     ws.onopen=function(){setStatus(true);};
     ws.onmessage=function(e){
         var msg=JSON.parse(e.data);
-        if(msg.type==='bienvenida')cargarHistorial();
         if(msg.type==='nueva_ubicacion'){
-            paqueteNum++;msg.data.numero=paqueteNum;todosLosDatos.unshift(msg.data);
             actualizarGPS(msg.data);
             actualizarMapa(msg.data.latitud,msg.data.longitud);
-            agregarFila(msg.data);
-            document.getElementById('contador').textContent='Paquetes capturados: '+todosLosDatos.length;
         }
     };
     ws.onclose=function(){setStatus(false);setTimeout(conectarWS,3000);};
@@ -269,37 +318,6 @@ function actualizarGPS(d){
     document.getElementById('fecha').textContent=fh.fecha;document.getElementById('hora').textContent=fh.hora;
 }
 
-function agregarFila(d){
-    var tbody=document.getElementById('dataBody'),row=document.createElement('tr');
-    var fh=extraerFechaHora(d.fecha_recepcion||d.timestamp_gps);
-    var src=(d.ip_origen||'-')+':'+(d.puerto_origen||'-'),dst=(d.ip_destino||'-')+':'+(d.puerto_destino||'5005');
-    row.innerHTML='<td>'+(d.numero||'-')+'</td><td>'+fh.fecha+'</td><td>'+fh.hora+'</td><td>'+src+'</td><td><span class="proto-badge">UDP</span></td><td>'+src+' &rarr; '+dst+'</td>';
-    tbody.insertBefore(row,tbody.firstChild);
-    while(tbody.children.length>200)tbody.removeChild(tbody.lastChild);
-}
-
-function cargarHistorial(){
-    var xhr=new XMLHttpRequest();xhr.open('GET','/api/ubicaciones?limit=50');
-    xhr.onload=function(){
-        if(xhr.status===200){
-            var data=JSON.parse(xhr.responseText);
-            if(Array.isArray(data)&&data.length>0){
-                todosLosDatos=[];document.getElementById('dataBody').innerHTML='';paqueteNum=0;
-                var ord=data.slice().reverse();
-                ord.forEach(function(d){paqueteNum++;d.numero=paqueteNum;todosLosDatos.unshift(d);agregarFila(d);});
-                document.getElementById('contador').textContent='Paquetes capturados: '+todosLosDatos.length;
-                var ultimo=data[0];
-                var p=[parseFloat(ultimo.latitud),parseFloat(ultimo.longitud)];
-                if(!marcador)marcador=L.marker(p).addTo(mapa);else marcador.setLatLng(p);
-                mapa.setView(p,15);ultimoPunto=p;
-                actualizarGPS(ultimo);
-            }
-        }
-    };xhr.send();
-}
-
-var histDataCache=[];
-    
 /* ═══════════════════════════════════════════════════════
    VALIDACION DE RANGO DE FECHAS
    ═══════════════════════════════════════════════════════ */
@@ -316,75 +334,64 @@ function ocultarErrorFiltro(){
     });
 }
 
-function actualizarRestriccionesTiempo() {
-    var desde     = document.getElementById('histFechaDesde').value;
-    var hasta     = document.getElementById('histFechaHasta').value;
-    var horaDesde = document.getElementById('histHoraDesde');
-    var horaHasta = document.getElementById('histHoraHasta');
-
-    if (desde && hasta && desde === hasta) {
-        // Misma fecha → las horas no pueden cruzarse
-        if (horaDesde.value) {
-            horaHasta.min = horaDesde.value;
-            // Si horaHasta ya tiene un valor menor, lo limpiamos
-            if (horaHasta.value && horaHasta.value <= horaDesde.value) horaHasta.value = '';
-        } else {
-            horaHasta.removeAttribute('min');
-        }
-        if (horaHasta.value) {
-            horaDesde.max = horaHasta.value;
-            if (horaDesde.value && horaDesde.value >= horaHasta.value) horaDesde.value = '';
-        } else {
-            horaDesde.removeAttribute('max');
-        }
-    } else {
-        // Fechas distintas → sin restricción de hora
-        horaDesde.removeAttribute('max');
-        horaHasta.removeAttribute('min');
-    }
-}
-
-// Al cambiar "Desde": el minimo de "Hasta" se actualiza automaticamente
-function onDesdeChange() {
-    var desde = document.getElementById('histFechaDesde').value;
-    var hasta  = document.getElementById('histFechaHasta');
-    if (desde) {
-        hasta.min = desde;
-        if (hasta.value && hasta.value < desde) {
-            hasta.value = '';
-            document.getElementById('histHoraHasta').value = '';
+function onDesdeChange(){
+    var desde=document.getElementById('histFechaDesde').value;
+    var hasta=document.getElementById('histFechaHasta');
+    if(desde){
+        hasta.min=desde;
+        if(hasta.value && hasta.value < desde){
+            hasta.value='';
+            document.getElementById('histHoraHasta').value='';
         }
     } else {
         hasta.removeAttribute('min');
     }
-    actualizarRestriccionesTiempo();
     ocultarErrorFiltro();
 }
 
-// Al cambiar "Hasta": el maximo de "Desde" se actualiza automaticamente
-function onHastaChange() {
-    var hasta  = document.getElementById('histFechaHasta').value;
-    var desde  = document.getElementById('histFechaDesde');
-    if (hasta) {
-        desde.max = hasta;
-        if (desde.value && desde.value > hasta) {
-            desde.value = '';
-            document.getElementById('histHoraDesde').value = '';
+function onHastaChange(){
+    var hasta=document.getElementById('histFechaHasta').value;
+    var desde=document.getElementById('histFechaDesde');
+    if(hasta){
+        desde.max=hasta;
+        if(desde.value && desde.value > hasta){
+            desde.value='';
+            document.getElementById('histHoraDesde').value='';
         }
     } else {
         desde.removeAttribute('max');
     }
-    actualizarRestriccionesTiempo();
     ocultarErrorFiltro();
 }
 
-// Al cambiar horas, solo limpiamos el error (la validacion completa ocurre al filtrar)
 function onHoraChange() {
-    actualizarRestriccionesTiempo();
+
+    const desde = document.getElementById('histFechaDesde');
+    const hasta = document.getElementById('histFechaHasta');
+    const horaDesde = document.getElementById('histHoraDesde');
+    const horaHasta = document.getElementById('histHoraHasta');
+
+    if (desde.value === hasta.value && desde.value !== "") {
+
+        horaHasta.min = horaDesde.value;
+        
+        horaDesde.max = horaHasta.value;
+
+        if (horaHasta.value < horaDesde.value && horaHasta.value !== "") {
+            horaHasta.value = horaDesde.value;
+        }
+        if (horaDesde.value > horaHasta.value && horaHasta.value !== "") {
+            horaDesde.value = horaHasta.value;
+        }
+    } else {
+
+        horaHasta.removeAttribute('min');
+        horaDesde.removeAttribute('max');
+    }
     ocultarErrorFiltro();
 }
+
 function validarRango(desde,hasta,horaDesde,horaHasta){
-    // Caso 1: ambas fechas presentes -> "Desde" no puede ser mayor que "Hasta"
     if(desde && hasta){
         if(desde > hasta){
             document.getElementById('histFechaDesde').classList.add('input-error');
@@ -392,7 +399,6 @@ function validarRango(desde,hasta,horaDesde,horaHasta){
             mostrarErrorFiltro('La fecha "Desde" no puede ser posterior a la fecha "Hasta".');
             return false;
         }
-        // Caso 2: misma fecha -> validar horas
         if(desde === hasta && horaDesde && horaHasta){
             if(horaDesde >= horaHasta){
                 document.getElementById('histHoraDesde').classList.add('input-error');
@@ -402,135 +408,149 @@ function validarRango(desde,hasta,horaDesde,horaHasta){
             }
         }
     }
-    // Caso 3: solo hora "Desde" sin fecha "Desde"
     if(horaDesde && !desde){
         document.getElementById('histHoraDesde').classList.add('input-error');
         mostrarErrorFiltro('Debes seleccionar una fecha "Desde" para usar la hora de inicio.');
         return false;
     }
-    // Caso 4: solo hora "Hasta" sin fecha "Hasta"
     if(horaHasta && !hasta){
         document.getElementById('histHoraHasta').classList.add('input-error');
         mostrarErrorFiltro('Debes seleccionar una fecha "Hasta" para usar la hora de fin.');
         return false;
     }
+    if(!desde && !hasta){
+        mostrarErrorFiltro('Selecciona al menos una fecha para filtrar.');
+        return false;
+    }
     return true;
 }
 
-/* ═══════════════════════════════════════════════════════ */
+/* ═══════════════════════════════════════════════════════
+   HISTORICO — CONSULTA AL SERVIDOR CON FILTRO SQL
+   ═══════════════════════════════════════════════════════ */
 
-function cargarHistorico(filtroDesde, filtroHasta, filtroHoraDesde, filtroHoraHasta) {
-    var xhr = new XMLHttpRequest();
-    xhr.open('GET', '/api/ubicaciones?limit=500');
-    xhr.onload = function() {
-        if (xhr.status === 200) {
-            var data = JSON.parse(xhr.responseText);
-            if (Array.isArray(data) && data.length > 0) {
-                histDataCache = data.slice().reverse();
-                renderHistorico(filtroDesde, filtroHasta, filtroHoraDesde, filtroHoraHasta);
-            }
+function filtrarHistorico(){
+    var desde=document.getElementById('histFechaDesde').value;
+    var hasta=document.getElementById('histFechaHasta').value;
+    var horaDesde=document.getElementById('histHoraDesde').value;
+    var horaHasta=document.getElementById('histHoraHasta').value;
+
+    ocultarErrorFiltro();
+    if(!validarRango(desde,hasta,horaDesde,horaHasta)) return;
+
+    // Construir URL con query params para el nuevo endpoint
+    var params=[];
+    if(desde) params.push('desde='+desde);
+    if(hasta) params.push('hasta='+hasta);
+    if(horaDesde) params.push('horaDesde='+horaDesde);
+    if(horaHasta) params.push('horaHasta='+horaHasta);
+    var url=basePath + 'api/historico?'+params.join('&');
+
+    // Mostrar loading
+    document.getElementById('histLoading').classList.add('show');
+    document.getElementById('histCount').textContent='Consultando...';
+
+    fetch(url).then(function(r){return r.json();}).then(function(data){
+        document.getElementById('histLoading').classList.remove('show');
+        if(Array.isArray(data)){
+            renderHistorico(data);
+        } else {
+            document.getElementById('histCount').textContent='Error al consultar registros';
         }
-    };
-    xhr.send();
+    }).catch(function(err){
+        document.getElementById('histLoading').classList.remove('show');
+        document.getElementById('histCount').textContent='Error de conexion';
+        console.error('[HIST] Fetch error:', err);
+    });
 }
-function renderHistorico(filtroDesde, filtroHasta, filtroHoraDesde, filtroHoraHasta) {
-    var tbody = document.getElementById('histBody');
-    tbody.innerHTML = '';
-    if (rutaHistPolyline) rutaHistPolyline.setLatLngs([]);
-    if (marcadorHist) { mapaHist.removeLayer(marcadorHist); marcadorHist = null; }
-    if (window.histCircles) window.histCircles.forEach(function(c) { mapaHist.removeLayer(c); });
-    window.histCircles = [];
 
-    // Filtrado cliente como capa de seguridad
-    var datos = [];
-    var totalSinFiltro = histDataCache.length;
-    for (var i = 0; i < histDataCache.length; i++) {
-        var d = histDataCache[i];
-        var fh = extraerFechaHora(d.timestamp_gps || d.fecha_recepcion);
-        if (filtroDesde && fh.fecha < filtroDesde) continue;
-        if (filtroHasta && fh.fecha > filtroHasta) continue;
-        if (filtroHoraDesde && fh.hora.substring(0,5) < filtroHoraDesde) continue;
-        if (filtroHoraHasta && fh.hora.substring(0,5) > filtroHoraHasta) continue;
-        datos.push(d);
-    }
+function renderHistorico(datos){
+    var tbody=document.getElementById('histBody');tbody.innerHTML='';
+    if(rutaHistPolyline)rutaHistPolyline.setLatLngs([]);
+    if(marcadorHist){mapaHist.removeLayer(marcadorHist);marcadorHist=null;}
+    if(window.histCircles){window.histCircles.forEach(function(c){mapaHist.removeLayer(c);});}
+    window.histCircles=[];
 
-    var hayFiltro = filtroDesde || filtroHasta || filtroHoraDesde || filtroHoraHasta;
-    if (hayFiltro && datos.length === 0) {
-        document.getElementById('histCount').textContent = 'No hay registros para el rango seleccionado';
-        return;
-    }
-    if (datos.length === 0) return;
+    document.getElementById('histCount').textContent='Total de registros: '+datos.length;
+    if(datos.length===0){document.getElementById('histCount').textContent='No hay registros para el rango seleccionado';return;}
 
-    document.getElementById('histCount').textContent = 'Total de registros: ' + datos.length +
-        (hayFiltro ? ' (de ' + totalSinFiltro + ' totales)' : '');
-
-    for (var i = 0; i < datos.length; i++) {
-        (function(d, idx) {
-            var fh = extraerFechaHora(d.timestamp_gps || d.fecha_recepcion);
-            var row = document.createElement('tr');
-            row.innerHTML = '<td>' + (idx + 1) + '</td><td>' + fh.fecha + '</td><td>' + fh.hora + '</td><td>' + d.latitud + '</td><td>' + d.longitud + '</td><td><span class="proto-badge">' + (d.protocolo || 'UDP') + '</span></td>';
-            row.style.cursor = 'pointer';
-            var lat = parseFloat(d.latitud), lng = parseFloat(d.longitud);
-            row.onclick = function() {
-                var prev = tbody.querySelector('.selected'); if (prev) prev.classList.remove('selected');
+    for(var i=0;i<datos.length;i++){
+        (function(d,idx){
+            var fh=extraerFechaHora(d.timestamp_gps||d.fecha_recepcion);
+            var row=document.createElement('tr');
+            row.innerHTML='<td>'+(idx+1)+'</td><td>'+fh.fecha+'</td><td>'+fh.hora+'</td><td>'+d.latitud+'</td><td>'+d.longitud+'</td><td><span class="proto-badge">'+(d.protocolo||'UDP')+'</span></td>';
+            row.style.cursor='pointer';
+            var lat=parseFloat(d.latitud),lng=parseFloat(d.longitud);
+            row.onclick=function(){
+                var prev=tbody.querySelector('.selected');if(prev)prev.classList.remove('selected');
                 this.classList.add('selected');
-                if (!marcadorHist) marcadorHist = L.marker([lat, lng]).addTo(mapaHist);
-                else marcadorHist.setLatLng([lat, lng]);
-                mapaHist.setView([lat, lng], 16);
+                if(!marcadorHist)marcadorHist=L.marker([lat,lng]).addTo(mapaHist);
+                else marcadorHist.setLatLng([lat,lng]);
+                mapaHist.setView([lat,lng],16);
             };
             tbody.appendChild(row);
-        })(datos[i], i);
+        })(datos[i],i);
     }
 
-    var todosPuntos = datos.map(function(d) { return [parseFloat(d.latitud), parseFloat(d.longitud)]; });
-    var puntosRuta = [];
-    todosPuntos.forEach(function(p) {
-        if (!puntosRuta.length || distanciaM(puntosRuta[puntosRuta.length - 1], p) > 30) puntosRuta.push(p);
-    });
-    var routeColor = getCS('--route');
-    todosPuntos.forEach(function(p) {
-        var c = L.circleMarker(p, { radius: 5, color: routeColor, fillColor: routeColor, fillOpacity: 0.8, weight: 2 }).addTo(mapaHist);
+    var todosPuntos=[];
+    for(var i=0;i<datos.length;i++) todosPuntos.push([parseFloat(datos[i].latitud),parseFloat(datos[i].longitud)]);
+    var puntosRuta=[];
+    for(var i=0;i<todosPuntos.length;i++){
+        if(puntosRuta.length===0||distanciaM(puntosRuta[puntosRuta.length-1],todosPuntos[i])>30)
+            puntosRuta.push(todosPuntos[i]);
+    }
+    var routeColor=getCS('--route');
+
+    for(var i=0;i<todosPuntos.length;i++){
+        var c=L.circleMarker(todosPuntos[i],{radius:5,color:routeColor,fillColor:routeColor,fillOpacity:0.8,weight:2}).addTo(mapaHist);
         window.histCircles.push(c);
-    });
-    var last = todosPuntos[todosPuntos.length - 1];
-    marcadorHist = L.marker(last).addTo(mapaHist);
-    if (todosPuntos.length > 1) mapaHist.fitBounds(L.latLngBounds(todosPuntos), { padding: [40, 40] });
-    else mapaHist.setView(last, 15);
-
-    if (puntosRuta.length >= 2) {
-        var coords = puntosRuta.map(function(p) { return p[1].toFixed(6) + ',' + p[0].toFixed(6); }).join(';');
-        fetch('https://router.project-osrm.org/route/v1/driving/' + coords + '?overview=full&geometries=geojson')
-            .then(function(r) { return r.json(); })
-            .then(function(data) {
-                var lls = (data.code === 'Ok' && data.routes.length)
-                    ? data.routes[0].geometry.coordinates.map(function(c) { return [c[1], c[0]]; })
-                    : puntosRuta;
-                rutaHistPolyline.setLatLngs(lls);
-                rutaHistPolyline.setStyle({ color: routeColor, weight: 5, opacity: 0.85 });
-            }).catch(function() {
-                rutaHistPolyline.setLatLngs(puntosRuta);
-                rutaHistPolyline.setStyle({ color: routeColor, weight: 4, opacity: 0.7 });
-            });
     }
-function filtrarHistorico() {
-    var desde    = document.getElementById('histFechaDesde').value;
-    var hasta    = document.getElementById('histFechaHasta').value;
-    var horaDesde = document.getElementById('histHoraDesde').value;
-    var horaHasta = document.getElementById('histHoraHasta').value;
-    ocultarErrorFiltro();
-    if (!validarRango(desde, hasta, horaDesde, horaHasta)) return;
-    cargarHistorico(desde, hasta, horaDesde, horaHasta);   // siempre va al servidor
+
+    var last=todosPuntos[todosPuntos.length-1];
+    marcadorHist=L.marker(last).addTo(mapaHist);
+    if(todosPuntos.length>1) mapaHist.fitBounds(L.latLngBounds(todosPuntos),{padding:[40,40]});
+    else mapaHist.setView(last,15);
+
+    if(puntosRuta.length>=2){
+        var coords=puntosRuta.map(function(p){return p[1].toFixed(6)+','+p[0].toFixed(6);}).join(';');
+        var url='https://router.project-osrm.org/route/v1/driving/'+coords+'?overview=full&geometries=geojson';
+        console.log('[HIST] OSRM: '+puntosRuta.length+' waypoints, URL: '+url.length+' chars');
+        fetch(url).then(function(r){
+            console.log('[HIST] OSRM status: '+r.status);
+            return r.json();
+        }).then(function(data){
+            if(data.code==='Ok'&&data.routes.length>0){
+                var routeCoords=data.routes[0].geometry.coordinates.map(function(c){return[c[1],c[0]];});
+                rutaHistPolyline.setLatLngs(routeCoords);
+                rutaHistPolyline.setStyle({color:routeColor,weight:5,opacity:0.85});
+                console.log('[HIST] Ruta dibujada: '+routeCoords.length+' coords');
+            } else {
+                console.log('[HIST] OSRM sin ruta:', data.code);
+                rutaHistPolyline.setLatLngs(puntosRuta);
+                rutaHistPolyline.setStyle({color:routeColor,weight:4,opacity:0.7});
+            }
+        }).catch(function(err){
+            console.log('[HIST] OSRM error:', err);
+            rutaHistPolyline.setLatLngs(puntosRuta);
+            rutaHistPolyline.setStyle({color:routeColor,weight:4,opacity:0.7});
+        });
+    }
 }
 
-function limpiarFiltroHist() {
-    ['histFechaDesde','histFechaHasta','histHoraDesde','histHoraHasta'].forEach(function(id) {
-        var el = document.getElementById(id);
-        el.value = '';
-        el.removeAttribute('min');
-        el.removeAttribute('max');
-    });
+function limpiarFiltroHist(){
+    document.getElementById('histFechaDesde').value='';
+    document.getElementById('histFechaHasta').value='';
+    document.getElementById('histHoraDesde').value='';
+    document.getElementById('histHoraHasta').value='';
+    document.getElementById('histFechaDesde').removeAttribute('max');
+    document.getElementById('histFechaHasta').removeAttribute('min');
     ocultarErrorFiltro();
-    cargarHistorico(); // carga sin filtros (últimos 500 del servidor)
+    // Limpiar mapa y tabla
+    var tbody=document.getElementById('histBody');tbody.innerHTML='';
+    if(rutaHistPolyline)rutaHistPolyline.setLatLngs([]);
+    if(marcadorHist&&mapaHist){mapaHist.removeLayer(marcadorHist);marcadorHist=null;}
+    if(window.histCircles){window.histCircles.forEach(function(c){mapaHist.removeLayer(c);});window.histCircles=[];}
+    document.getElementById('histCount').textContent='Selecciona un rango de fechas y presiona Filtrar';
 }
 
 conectarWS();
