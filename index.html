@@ -159,13 +159,13 @@
             <div class="filter-bar">
                 <div class="filter-group">
                     <label>Desde:</label>
-                    <input type="date" id="histFechaDesde" onchange="onDesdeChange(); checkFiltroListo()">
-                    <input type="time" id="histHoraDesde" onchange="onHoraChange(); checkFiltroListo()">
+                    <input type="date" id="histFechaDesde" onchange="onDesdeChange()">
+                    <input type="time" id="histHoraDesde" onchange="onHoraChange()">
                 </div>
                 <div class="filter-group">
                     <label>Hasta:</label>
-                    <input type="date" id="histFechaHasta" onchange="onHastaChange(); checkFiltroListo()">
-                    <input type="time" id="histHoraHasta" onchange="onHoraChange(); checkFiltroListo()">
+                    <input type="date" id="histFechaHasta" onchange="onHastaChange()">
+                    <input type="time" id="histHoraHasta" onchange="onHoraChange()">
                 </div>
                 <!-- Reemplaza el botón Filtrar -->
                 <button class="filter-btn" id="btnFiltrar" onclick="filtrarHistorico()" disabled>Filtrar</button>
@@ -353,6 +353,7 @@ function onDesdeChange(){
         hasta.removeAttribute('min');
     }
     ocultarErrorFiltro();
+    checkFiltroListo()
 }
 
 function onHastaChange(){
@@ -368,6 +369,7 @@ function onHastaChange(){
         desde.removeAttribute('max');
     }
     ocultarErrorFiltro();
+    checkFiltroListo()
 }
 
 function onHoraChange() {
@@ -395,6 +397,7 @@ function onHoraChange() {
         horaDesde.removeAttribute('max');
     }
     ocultarErrorFiltro();
+    checkFiltroListo()
 }
 
 function validarRango(desde,hasta,horaDesde,horaHasta){
