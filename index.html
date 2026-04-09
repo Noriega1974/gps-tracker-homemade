@@ -95,6 +95,11 @@
         @keyframes spin{from{transform:rotate(0deg);}to{transform:rotate(360deg);}}
         [data-theme="dark"] .leaflet-tile-pane{filter:brightness(0.7) contrast(1.1) saturate(0.8);}
         [data-theme="dark"] .leaflet-control-zoom a{background:var(--bg2)!important;color:var(--txt1)!important;border-color:var(--brd)!important;}
+        .leaflet-control-center a{width:34px;height:34px;display:flex;align-items:center;justify-content:center;background:var(--bg-card);border:2px solid rgba(0,0,0,0.2);border-radius:4px;cursor:pointer;transition:background 0.2s;}
+        .leaflet-control-center a:hover{background:var(--bg-input);}
+        .leaflet-control-center a svg{width:18px;height:18px;color:var(--txt1);}
+        [data-theme="dark"] .leaflet-control-center a{background:var(--bg2)!important;border-color:var(--brd)!important;}
+        [data-theme="dark"] .leaflet-control-center a svg{color:var(--txt1);}
         @media(max-width:768px){.sidebar{transform:translateX(calc(-1 * var(--sidebar-w)));}.sidebar.open{transform:translateX(0);}.hamburger{display:flex;}.main{margin-left:0;padding:70px 16px 24px;}.gps-grid{grid-template-columns:1fr;}#mapa,#mapaHist{height:300px;}}
         .sidebar {
         z-index: 9999 !important;
@@ -200,6 +205,21 @@ function showView(name,el){
             mapaHist=L.map('mapaHist').setView(ultimoPunto||[10.9685,-74.7813],13);
             L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{attribution:'&copy; OpenStreetMap'}).addTo(mapaHist);
             rutaHistPolyline=L.polyline([],{color:getCS('--route'),weight:5}).addTo(mapaHist);
+            // Boton centrar en mapa historico
+            L.Control.CenterHist=L.Control.extend({
+                onAdd:function(){
+                    var div=L.DomUtil.create('div','leaflet-control-center leaflet-bar');
+                    div.innerHTML='<a href="#" title="Centrar ruta"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="3"/><path d="M12 2v4m0 12v4m10-10h-4M6 12H2"/><circle cx="12" cy="12" r="9"/></svg></a>';
+                    div.onclick=function(e){
+                        e.preventDefault();e.stopPropagation();
+                        var pts=rutaHistPolyline.getLatLngs();
+                        if(pts.length>1)mapaHist.fitBounds(L.latLngBounds(pts),{padding:[40,40]});
+                        else if(marcadorHist)mapaHist.setView(marcadorHist.getLatLng(),16);
+                    };
+                    return div;
+                }
+            });
+            new L.Control.CenterHist({position:'topright'}).addTo(mapaHist);
             mapaHistInit=true;
         },150);
     }
@@ -219,6 +239,17 @@ L.Icon.Default.mergeOptions({
 });
 
 var marcador=null,rutaPolyline=L.polyline([],{color:getCS('--route'),weight:5}).addTo(mapa),ultimoPunto=null;
+
+// Boton centrar en mapa real-time
+L.Control.Center=L.Control.extend({
+    onAdd:function(){
+        var div=L.DomUtil.create('div','leaflet-control-center leaflet-bar');
+        div.innerHTML='<a href="#" title="Centrar ubicacion"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="3"/><path d="M12 2v4m0 12v4m10-10h-4M6 12H2"/><circle cx="12" cy="12" r="9"/></svg></a>';
+        div.onclick=function(e){e.preventDefault();e.stopPropagation();if(ultimoPunto)mapa.setView(ultimoPunto,16);};
+        return div;
+    }
+});
+new L.Control.Center({position:'topright'}).addTo(mapa);
 
 // Base path para que las rutas API funcionen tanto en / como en /dev/, /devdaniel/, etc.
 var basePath = (function(){
