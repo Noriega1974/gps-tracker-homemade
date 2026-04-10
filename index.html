@@ -167,7 +167,16 @@
             </div>
         </div>
         <div class="card map-wrap" style="padding:0;overflow:hidden;"><div id="mapaHist"></div></div>
-        <div class="card"><div class="card-title">Registros Historicos</div><p class="pkt-count" id="histCount">Selecciona un rango de fechas y presiona Filtrar</p><div class="table-wrap"><table><thead><tr><th>No.</th><th>Fecha</th><th>Hora (COL)</th><th>Latitud</th><th>Longitud</th></tr></thead><tbody id="histBody"></tbody></table></div></div>
+        <div class="card">
+            <div class="card-title" style="cursor:pointer;user-select:none;" onclick="toggleHistTable()">
+                Registros Historicos
+                <svg id="histToggleIcon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" width="16" height="16" style="margin-left:auto;transition:transform 0.3s;transform:rotate(-90deg);"><polyline points="6 9 12 15 18 9"/></svg>
+            </div>
+            <div id="histTableWrap" style="display:none;">
+                <p class="pkt-count" id="histCount">Selecciona un rango de fechas y presiona Filtrar</p>
+                <div class="table-wrap"><table><thead><tr><th>No.</th><th>Fecha</th><th>Hora (COL)</th><th>Latitud</th><th>Longitud</th></tr></thead><tbody id="histBody"></tbody></table></div>
+            </div>
+        </div>
     </div>
 </div>
 
@@ -552,6 +561,34 @@ function limpiarFiltroHist(){
     document.getElementById('histCount').textContent='Selecciona un rango de fechas y presiona Filtrar';
     checkFiltroListo();
 }
+
+function toggleHistTable(){
+    var wrap=document.getElementById('histTableWrap');
+    var icon=document.getElementById('histToggleIcon');
+    if(wrap.style.display==='none'){
+        wrap.style.display='block';
+        icon.style.transform='rotate(0deg)';
+    } else {
+        wrap.style.display='none';
+        icon.style.transform='rotate(-90deg)';
+    }
+}
+
+// Fecha y hora por defecto: hoy en hora Colombia
+(function(){
+    var now=new Date();
+    var col=new Date(now.getTime()+now.getTimezoneOffset()*60000-5*3600000);
+    var fecha=col.toISOString().split('T')[0];
+    var hora=col.toTimeString().substring(0,5);
+    document.getElementById('histFechaDesde').value=fecha;
+    document.getElementById('histFechaHasta').value=fecha;
+    document.getElementById('histHoraDesde').value=hora;
+    document.getElementById('histHoraHasta').value=hora;
+    // Sincronizar restricciones min/max
+    document.getElementById('histFechaHasta').min=fecha;
+    document.getElementById('histFechaDesde').max=fecha;
+    checkFiltroListo();
+})();
 
 conectarWS();
 </script>
