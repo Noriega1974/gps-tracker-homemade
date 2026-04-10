@@ -283,10 +283,18 @@ function actualizarMapa(lat,lon){
     window.rtCircles.push(c);
     if(ultimoPunto){
         var prevPunto=ultimoPunto;
+        // Dibujar linea recta inmediata para que no haya delay visual
+        var ptsAntes=rutaPolyline.getLatLngs().length;
+        var pts=rutaPolyline.getLatLngs();
+        pts.push(prevPunto);pts.push(p);
+        rutaPolyline.setLatLngs(pts);
+        // Luego reemplazar con ruta OSRM cuando llegue
         obtenerRutaOSRM(prevPunto,p,function(coords){
-            var pts=rutaPolyline.getLatLngs();
-            coords.forEach(function(c){pts.push(c);});
-            rutaPolyline.setLatLngs(pts);
+            // Quitar la linea recta temporal y poner la ruta real
+            var allPts=rutaPolyline.getLatLngs();
+            var base=allPts.slice(0,ptsAntes);
+            coords.forEach(function(c){base.push(c);});
+            rutaPolyline.setLatLngs(base);
         });
     }
     ultimoPunto=p;
