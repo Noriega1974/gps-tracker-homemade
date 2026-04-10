@@ -177,7 +177,7 @@ function iniciarWeb() {
             }
 
             var where = conditions.length > 0 ? ' WHERE ' + conditions.join(' AND ') : '';
-            var sql = 'SELECT * FROM ubicaciones' + where + ' ORDER BY id ASC LIMIT 500';
+            var sql = 'SELECT * FROM ubicaciones' + where + ' ORDER BY id DESC LIMIT 500';
 
             console.log('[HIST] SQL:', sql, '| Params:', params);
             var result = await pool.query(sql, params);
