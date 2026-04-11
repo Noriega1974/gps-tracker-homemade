@@ -169,14 +169,14 @@ function iniciarWeb() {
     // Extraemos el ID del nombre (ej: "GPS-DEV-JOSE" -> "jose") asegurando limpieza
     const currentId = instanceName.toLowerCase().trim().split('-').pop();
 
-    app.get('/', function(req, res) {
-        const html = fs.readFileSync(path.join(__dirname, 'public/index.html'), 'utf8')
-            .replace(/{{INSTANCE_NAME}}/g, instanceName)
-            .replace(/{{CURRENT_ID}}/g, currentId);
-        res.send(html);
-    });
+    // Leer y procesar el HTML una sola vez al arrancar — no en cada request
+    const cachedHtml = fs.readFileSync(path.join(__dirname, 'index.html'), 'utf8')
+        .replace(/{{INSTANCE_NAME}}/g, instanceName)
+        .replace(/{{CURRENT_ID}}/g, currentId);
 
-    app.use(express.static(path.join(__dirname, 'public')));
+    app.get('/', function(req, res) {
+        res.send(cachedHtml);
+    });
 
     // Ultimo punto (para real-time al cargar)
     app.get('/api/ubicaciones', async function(req, res) {
@@ -232,20 +232,41 @@ function iniciarWeb() {
 
     app.get('/api/stats', async function(req, res) {
         try {
-            const total = await pool.query('SELECT COUNT(*) as total FROM ubicaciones');
-            const byProto = await pool.query('SELECT protocolo, COUNT(*) as total FROM ubicaciones GROUP BY protocolo');
-            const ultima = await pool.query('SELECT * FROM ubicaciones ORDER BY id DESC LIMIT 1');
+            const [totalRes, byProtoRes, ultimaRes] = await Promise.all([
+                pool.query('SELECT COUNT(*) as total FROM ubicaciones'),
+                pool.query('SELECT protocolo, COUNT(*) as total FROM ubicaciones GROUP BY protocolo'),
+                pool.query('SELECT * FROM ubicaciones ORDER BY id DESC LIMIT 1')
+            ]);
             res.json({
-                total: total.rows[0].total,
-                por_protocolo: byProto.rows,
-                ultima_ubicacion: ultima.rows[0] || null
+                total: totalRes.rows[0].total,
+                por_protocolo: byProtoRes.rows,
+                ultima_ubicacion: ultimaRes.rows[0] || null
             });
         } catch (err) {
             res.status(500).json({ error: err.message });
         }
     });
 
+    // Heartbeat: detectar y limpiar sockets muertos cada 30 segundos
+    const heartbeatInterval = setInterval(function() {
+        wss.clients.forEach(function(ws) {
+            if (ws.isAlive === false) {
+                console.log('[WS] Terminando socket sin respuesta (heartbeat timeout)');
+                return ws.terminate();
+            }
+            ws.isAlive = false;
+            ws.ping();
+        });
+    }, 30000);
+
+    wss.on('close', function() {
+        clearInterval(heartbeatInterval);
+    });
+
     wss.on('connection', function(ws, req) {
+        ws.isAlive = true;
+        ws.on('pong', function() { ws.isAlive = true; });
+
         var clientIP = req.socket.remoteAddress;
         console.log('[WS] Cliente web conectado desde ' + clientIP);
 
@@ -260,7 +281,7 @@ function iniciarWeb() {
     });
 
     server.listen(WEB_PORT, '0.0.0.0', function() {
-        console.log('[WEB] http://gpstracker3.ddns.net:' + WEB_PORT);
+        console.log('[WEB] Escuchando en http://' + serverIP + ':' + WEB_PORT + ' (' + (process.env.INSTANCE_NAME || 'sin nombre') + ')');
     });
 }
 
