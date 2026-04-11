@@ -10,14 +10,14 @@ const UDP_PORT = parseInt(process.env.UDP_PORT) || 5005;
 const WEB_PORT = parseInt(process.env.PORT) || 8080;
 
 // =====================================================
-//  CONFIGURACION BASE DE DATOS — CREDENCIALES HARDCODED (TEMPORAL)
+//  CONFIGURACION BASE DE DATOS — ESTABLE (HARDCODED)
 // =====================================================
 const pool = new Pool({
     host: 'database-1.culqegkq4tq5.us-east-1.rds.amazonaws.com',
     user: 'postgres',
     password: 'J50911711n-database',
     database: 'gps_tracker',
-    port: parseInt(process.env.DB_PORT) || 5432,
+    port: 5432,
     ssl: { rejectUnauthorized: false } // Considera usar certificados CA de AWS en el futuro
 });
 let wss;
