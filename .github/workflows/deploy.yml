@@ -36,7 +36,16 @@ jobs:
           host: henriquezd.ddns.net
           username: ubuntu
           key: ${{ secrets.EC2_KEY_DANIEL }}
-          script: /home/ubuntu/deploy-devdaniel.sh
+          script: |
+            cd /home/ubuntu/dev
+            echo 'DB_HOST=${{ secrets.DB_HOST }}' > .env
+            echo 'DB_USER=${{ secrets.DB_USER }}' >> .env
+            echo 'DB_PASSWORD=${{ secrets.DB_PASSWORD }}' >> .env
+            echo 'DB_NAME=${{ secrets.DB_NAME }}' >> .env
+            echo "DB_PORT=5432" >> .env
+            echo "INSTANCE_NAME=GPS-DEV-DANIEL" >> .env
+            npm install
+            /home/ubuntu/deploy-devdaniel.sh
   
   deploy-devpolo:
     if: github.ref == 'refs/heads/devpolo'
@@ -48,7 +57,16 @@ jobs:
           host: gps-tracker.ddns.net
           username: ubuntu
           key: ${{ secrets.EC2_KEY_POLO }}
-          script: /home/ubuntu/deploy-devpolo.sh
+          script: |
+            cd /home/ubuntu/dev
+            echo 'DB_HOST=${{ secrets.DB_HOST }}' > .env
+            echo 'DB_USER=${{ secrets.DB_USER }}' >> .env
+            echo 'DB_PASSWORD=${{ secrets.DB_PASSWORD }}' >> .env
+            echo 'DB_NAME=${{ secrets.DB_NAME }}' >> .env
+            echo "DB_PORT=5432" >> .env
+            echo "INSTANCE_NAME=GPS-DEV-POLO" >> .env
+            npm install
+            /home/ubuntu/deploy-devpolo.sh
           
   deploy-devivan:
     if: github.ref == 'refs/heads/devivan'
@@ -60,7 +78,16 @@ jobs:
           host: barriosun.ddns.net
           username: ubuntu
           key: ${{ secrets.EC2_KEY_IVAN }}
-          script: /home/ubuntu/deploy-devivan.sh
+          script: |
+            cd /home/ubuntu/dev
+            echo 'DB_HOST=${{ secrets.DB_HOST }}' > .env
+            echo 'DB_USER=${{ secrets.DB_USER }}' >> .env
+            echo 'DB_PASSWORD=${{ secrets.DB_PASSWORD }}' >> .env
+            echo 'DB_NAME=${{ secrets.DB_NAME }}' >> .env
+            echo "DB_PORT=5432" >> .env
+            echo "INSTANCE_NAME=GPS-DEV-IVAN" >> .env
+            npm install
+            /home/ubuntu/deploy-devivan.sh
         
   deploy-jose:
     if: github.ref == 'refs/heads/main'
@@ -72,7 +99,16 @@ jobs:
           host: gpstracker3.ddns.net
           username: ubuntu
           key: ${{ secrets.EC2_KEY }}
-          script: /home/ubuntu/deploy.sh
+          script: |
+            cd /home/ubuntu/gps
+            echo 'DB_HOST=${{ secrets.DB_HOST }}' > .env
+            echo 'DB_USER=${{ secrets.DB_USER }}' >> .env
+            echo 'DB_PASSWORD=${{ secrets.DB_PASSWORD }}' >> .env
+            echo 'DB_NAME=${{ secrets.DB_NAME }}' >> .env
+            echo "DB_PORT=5432" >> .env
+            echo "INSTANCE_NAME=GPS-PROD-JOSE" >> .env
+            npm install
+            /home/ubuntu/deploy.sh
 
   deploy-daniel:
     if: github.ref == 'refs/heads/main'
@@ -84,7 +120,16 @@ jobs:
           host: henriquezd.ddns.net
           username: ubuntu
           key: ${{ secrets.EC2_KEY_DANIEL }}
-          script: /home/ubuntu/deploy.sh
+          script: |
+            cd /home/ubuntu/gps
+            echo 'DB_HOST=${{ secrets.DB_HOST }}' > .env
+            echo 'DB_USER=${{ secrets.DB_USER }}' >> .env
+            echo 'DB_PASSWORD=${{ secrets.DB_PASSWORD }}' >> .env
+            echo 'DB_NAME=${{ secrets.DB_NAME }}' >> .env
+            echo "DB_PORT=5432" >> .env
+            echo "INSTANCE_NAME=GPS-PROD-DANIEL" >> .env
+            npm install
+            /home/ubuntu/deploy.sh
 
   deploy-polo:
     if: github.ref == 'refs/heads/main'
@@ -96,7 +141,16 @@ jobs:
           host: gps-tracker.ddns.net
           username: ubuntu
           key: ${{ secrets.EC2_KEY_POLO }}
-          script: /home/ubuntu/deploy.sh
+          script: |
+            cd /home/ubuntu/gps
+            echo 'DB_HOST=${{ secrets.DB_HOST }}' > .env
+            echo 'DB_USER=${{ secrets.DB_USER }}' >> .env
+            echo 'DB_PASSWORD=${{ secrets.DB_PASSWORD }}' >> .env
+            echo 'DB_NAME=${{ secrets.DB_NAME }}' >> .env
+            echo "DB_PORT=5432" >> .env
+            echo "INSTANCE_NAME=GPS-PROD-POLO" >> .env
+            npm install
+            /home/ubuntu/deploy.sh
 
   deploy-ivan:
     if: github.ref == 'refs/heads/main'
@@ -108,4 +162,13 @@ jobs:
           host: barriosun.ddns.net
           username: ubuntu
           key: ${{ secrets.EC2_KEY_IVAN }}
-          script: /home/ubuntu/deploy.sh
+          script: |
+            cd /home/ubuntu/gps
+            echo 'DB_HOST=${{ secrets.DB_HOST }}' > .env
+            echo 'DB_USER=${{ secrets.DB_USER }}' >> .env
+            echo 'DB_PASSWORD=${{ secrets.DB_PASSWORD }}' >> .env
+            echo 'DB_NAME=${{ secrets.DB_NAME }}' >> .env
+            echo "DB_PORT=5432" >> .env
+            echo "INSTANCE_NAME=GPS-PROD-IVAN" >> .env
+            npm install
+            /home/ubuntu/deploy.sh
