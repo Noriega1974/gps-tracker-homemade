@@ -10,6 +10,15 @@ const os = require('os');
 const UDP_PORT = parseInt(process.env.UDP_PORT) || 5005;
 const WEB_PORT = parseInt(process.env.PORT) || 8080;
 
+// Validar variables críticas antes de arrancar
+const requiredEnv = ['DB_HOST', 'DB_USER', 'DB_PASSWORD', 'DB_NAME'];
+requiredEnv.forEach(variable => {
+    if (!process.env[variable]) {
+        console.error(`[FATAL] La variable de entorno ${variable} no está definida.`);
+        process.exit(1);
+    }
+});
+
 // =====================================================
 //  CONFIGURACION BASE DE DATOS — SEGURA
 // =====================================================
@@ -45,9 +54,14 @@ function timestamp() {
 }
 
 async function initDB() {
-    const client = await pool.connect();
-    console.log('[DB] Conectado a PostgreSQL RDS (gps_tracker)');
-    client.release();
+    try {
+        const client = await pool.connect();
+        console.log(`[DB] Conectado a PostgreSQL RDS (${process.env.DB_NAME})`);
+        client.release();
+    } catch (err) {
+        console.error('[DB] Error de conexión:', err.message);
+        throw err; // Detener el arranque si no hay base de datos
+    }
 }
 
 async function guardarUbicacion(data, ipOrigen) {

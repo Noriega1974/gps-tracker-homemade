@@ -17,12 +17,13 @@ jobs:
           key: ${{ secrets.EC2_KEY }}
           script: |
             cd /home/ubuntu/dev
-            echo "DB_HOST=${{ secrets.DB_HOST }}" > .env
-            echo "DB_USER=${{ secrets.DB_USER }}" >> .env
-            echo "DB_PASSWORD=${{ secrets.DB_PASSWORD }}" >> .env
-            echo "DB_NAME=${{ secrets.DB_NAME }}" >> .env
+            echo 'DB_HOST=${{ secrets.DB_HOST }}' > .env
+            echo 'DB_USER=${{ secrets.DB_USER }}' >> .env
+            echo 'DB_PASSWORD=${{ secrets.DB_PASSWORD }}' >> .env
+            echo 'DB_NAME=${{ secrets.DB_NAME }}' >> .env
             echo "DB_PORT=5432" >> .env
             echo "INSTANCE_NAME=GPS-DEV-JOSE" >> .env
+            npm install
             /home/ubuntu/deploy-dev.sh
 
   deploy-devdaniel:
