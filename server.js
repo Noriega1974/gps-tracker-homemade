@@ -88,9 +88,26 @@ function broadcast(data) {
 
 function parsearDatos(raw) {
     try {
-        return JSON.parse(raw.toString('utf8').trim());
+        const payload = JSON.parse(raw.toString('utf8').trim());
+        
+        // Validacion estricta de esquema
+        const lat = parseFloat(payload.lat);
+        const lon = parseFloat(payload.lon);
+        const time = payload.time;
+
+        if (isNaN(lat) || isNaN(lon) || !time) {
+            console.warn('[PARSE] Datos incompletos o invalidos:', payload);
+            return null;
+        }
+
+        // Retornamos un objeto limpio con tipos de datos correctos
+        return {
+            lat: lat,
+            lon: lon,
+            time: String(time).trim()
+        };
     } catch (e) {
-        console.error('[PARSE] JSON invalido:', raw.toString('utf8').substring(0, 200));
+        console.error('[PARSE] Error al procesar paquete:', e.message);
         return null;
     }
 }
@@ -100,15 +117,19 @@ function iniciarUDP() {
 
     server.on('message', async function(msg, rinfo) {
         const data = parsearDatos(msg);
-        if (data) {
-            packetCount++;
-            console.log('\n[' + timestamp() + '] UDP #' + packetCount + ' de ' + rinfo.address + ':' + rinfo.port);
-            console.log('  Lat: ' + data.lat + ', Lon: ' + data.lon + ', Time: ' + data.time);
-            console.log('  Bytes: ' + msg.length);
+        
+        // Solo procedemos si el dato es valido y paso el filtro de esquema
+        if (!data) return;
 
+        packetCount++;
+        console.log(`\n[${timestamp()}] UDP #${packetCount} de ${rinfo.address}:${rinfo.port}`);
+        console.log(`  Lat: ${data.lat}, Lon: ${data.lon}, Time: ${data.time}`);
+        console.log(`  Bytes: ${msg.length}`);
+
+        try {
             const id = await guardarUbicacion(data, rinfo.address);
 
-            var registro = {
+            const registro = {
                 id: id,
                 latitud: data.lat,
                 longitud: data.lon,
@@ -121,7 +142,10 @@ function iniciarUDP() {
                 longitud_bytes: msg.length,
                 fecha_recepcion: new Date().toISOString()
             };
+            
             broadcast(registro);
+        } catch (err) {
+            console.error('[UDP] Error en el flujo de procesamiento:', err.message);
         }
     });
 
