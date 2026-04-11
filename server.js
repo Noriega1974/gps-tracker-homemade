@@ -1,3 +1,4 @@
+require('dotenv').config();
 const dgram = require('dgram');
 const express = require('express');
 const http = require('http');
@@ -10,14 +11,14 @@ const UDP_PORT = parseInt(process.env.UDP_PORT) || 5005;
 const WEB_PORT = parseInt(process.env.PORT) || 8080;
 
 // =====================================================
-//  CONFIGURACION BASE DE DATOS — CAMBIA TU PASSWORD
+//  CONFIGURACION BASE DE DATOS — SEGURA
 // =====================================================
 const pool = new Pool({
-    host: 'database-1.culqegkq4tq5.us-east-1.rds.amazonaws.com',
-    user: 'postgres',
-    password: 'J50911711n-database',   // <-- cambia esto
-    database: 'gps_tracker',
-    port: 5432,
+    host: process.env.DB_HOST,
+    user: process.env.DB_USER,
+    password: process.env.DB_PASSWORD,
+    database: process.env.DB_NAME,
+    port: parseInt(process.env.DB_PORT) || 5432,
     ssl: { rejectUnauthorized: false }
 });
 let wss;
