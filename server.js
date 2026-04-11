@@ -1,3 +1,4 @@
+require('dotenv').config();
 const dgram = require('dgram');
 const express = require('express');
 const http = require('http');
@@ -10,15 +11,15 @@ const UDP_PORT = parseInt(process.env.UDP_PORT) || 5005;
 const WEB_PORT = parseInt(process.env.PORT) || 8080;
 
 // =====================================================
-//  CONFIGURACION BASE DE DATOS — CAMBIA TU PASSWORD
+//  CONFIGURACION BASE DE DATOS — USANDO VARIABLES DE ENTORNO
 // =====================================================
 const pool = new Pool({
-    host: 'database-1.culqegkq4tq5.us-east-1.rds.amazonaws.com',
-    user: 'postgres',
-    password: 'J50911711n-database',   // <-- cambia esto
-    database: 'gps_tracker',
-    port: 5432,
-    ssl: { rejectUnauthorized: false }
+    host: process.env.DB_HOST,
+    user: process.env.DB_USER,
+    password: process.env.DB_PASSWORD,
+    database: process.env.DB_NAME,
+    port: parseInt(process.env.DB_PORT) || 5432,
+    ssl: { rejectUnauthorized: false } // Considera usar certificados CA de AWS en el futuro
 });
 let wss;
 let packetCount = 0;
@@ -177,7 +178,7 @@ function iniciarWeb() {
             }
 
             var where = conditions.length > 0 ? ' WHERE ' + conditions.join(' AND ') : '';
-            var sql = 'SELECT * FROM ubicaciones' + where + ' ORDER BY id ASC LIMIT 500';
+            var sql = 'SELECT * FROM ubicaciones' + where + ' ORDER BY id DESC LIMIT 500';
 
             console.log('[HIST] SQL:', sql, '| Params:', params);
             var result = await pool.query(sql, params);
@@ -245,7 +246,13 @@ main().catch(function(err) {
 
 process.on('SIGINT', async function() {
     console.log('\nCerrando servidor...');
-    console.log('  UDP recibidos: ' + packetCount);
-    await pool.end();
-    process.exit(0);
+    try {
+        console.log('  UDP recibidos: ' + packetCount);
+        await pool.end();
+        console.log('[DB] Pool de conexiones cerrado.');
+        process.exit(0);
+    } catch (err) {
+        console.error('[ERR] Error al cerrar:', err.message);
+        process.exit(1);
+    }
 });

@@ -66,7 +66,6 @@
         td{padding:9px 14px;border-bottom:1px solid var(--brd-lt);font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--txt1);transition:color var(--t);}
         tr:hover td{background:var(--accent-lt);}
         tr.selected td{background:var(--accent-lt);font-weight:600;}
-        .proto-badge{display:inline-block;padding:2px 8px;border-radius:4px;background:var(--accent-lt);color:var(--accent);font-weight:600;font-size:11px;}
         .pkt-count{font-size:13px;color:var(--txt2);margin-bottom:12px;font-weight:500;}
         .filter-bar{display:flex;align-items:center;gap:12px;margin-bottom:16px;flex-wrap:wrap;}
         .filter-bar label{font-size:13px;font-weight:500;color:var(--txt2);}
@@ -95,11 +94,6 @@
         @keyframes spin{from{transform:rotate(0deg);}to{transform:rotate(360deg);}}
         [data-theme="dark"] .leaflet-tile-pane{filter:brightness(0.7) contrast(1.1) saturate(0.8);}
         [data-theme="dark"] .leaflet-control-zoom a{background:var(--bg2)!important;color:var(--txt1)!important;border-color:var(--brd)!important;}
-        .leaflet-control-center a{width:34px;height:34px;display:flex;align-items:center;justify-content:center;background:var(--bg-card);border:2px solid rgba(0,0,0,0.2);border-radius:4px;cursor:pointer;transition:background 0.2s;}
-        .leaflet-control-center a:hover{background:var(--bg-input);}
-        .leaflet-control-center a svg{width:18px;height:18px;color:var(--txt1);}
-        [data-theme="dark"] .leaflet-control-center a{background:var(--bg2)!important;border-color:var(--brd)!important;}
-        [data-theme="dark"] .leaflet-control-center a svg{color:var(--txt1);}
         @media(max-width:768px){.sidebar{transform:translateX(calc(-1 * var(--sidebar-w)));}.sidebar.open{transform:translateX(0);}.hamburger{display:flex;}.main{margin-left:0;padding:70px 16px 24px;}.gps-grid{grid-template-columns:1fr;}#mapa,#mapaHist{height:300px;}}
         .sidebar {
         z-index: 9999 !important;
@@ -173,7 +167,16 @@
             </div>
         </div>
         <div class="card map-wrap" style="padding:0;overflow:hidden;"><div id="mapaHist"></div></div>
-        <div class="card"><div class="card-title">Registros Historicos</div><p class="pkt-count" id="histCount">Selecciona un rango de fechas y presiona Filtrar</p><div class="table-wrap"><table><thead><tr><th>No.</th><th>Fecha</th><th>Hora (COL)</th><th>Latitud</th><th>Longitud</th><th>Protocolo</th></tr></thead><tbody id="histBody"></tbody></table></div></div>
+        <div class="card">
+            <div class="card-title" style="cursor:pointer;user-select:none;" onclick="toggleHistTable()">
+                Registros Historicos
+                <svg id="histToggleIcon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" width="16" height="16" style="margin-left:auto;transition:transform 0.3s;transform:rotate(-90deg);"><polyline points="6 9 12 15 18 9"/></svg>
+            </div>
+            <div id="histTableWrap" style="display:none;">
+                <p class="pkt-count" id="histCount">Selecciona un rango de fechas y presiona Filtrar</p>
+                <div class="table-wrap"><table><thead><tr><th>No.</th><th>Fecha</th><th>Hora (COL)</th><th>Latitud</th><th>Longitud</th></tr></thead><tbody id="histBody"></tbody></table></div>
+            </div>
+        </div>
     </div>
 </div>
 
@@ -205,21 +208,6 @@ function showView(name,el){
             mapaHist=L.map('mapaHist').setView(ultimoPunto||[10.9685,-74.7813],13);
             L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{attribution:'&copy; OpenStreetMap'}).addTo(mapaHist);
             rutaHistPolyline=L.polyline([],{color:getCS('--route'),weight:5}).addTo(mapaHist);
-            // Boton centrar en mapa historico
-            L.Control.CenterHist=L.Control.extend({
-                onAdd:function(){
-                    var div=L.DomUtil.create('div','leaflet-control-center leaflet-bar');
-                    div.innerHTML='<a href="#" title="Centrar ruta"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="3"/><path d="M12 2v4m0 12v4m10-10h-4M6 12H2"/><circle cx="12" cy="12" r="9"/></svg></a>';
-                    div.onclick=function(e){
-                        e.preventDefault();e.stopPropagation();
-                        var pts=rutaHistPolyline.getLatLngs();
-                        if(pts.length>1)mapaHist.fitBounds(L.latLngBounds(pts),{padding:[40,40]});
-                        else if(marcadorHist)mapaHist.setView(marcadorHist.getLatLng(),16);
-                    };
-                    return div;
-                }
-            });
-            new L.Control.CenterHist({position:'topright'}).addTo(mapaHist);
             mapaHistInit=true;
         },150);
     }
@@ -239,17 +227,6 @@ L.Icon.Default.mergeOptions({
 });
 
 var marcador=null,rutaPolyline=L.polyline([],{color:getCS('--route'),weight:5}).addTo(mapa),ultimoPunto=null;
-
-// Boton centrar en mapa real-time
-L.Control.Center=L.Control.extend({
-    onAdd:function(){
-        var div=L.DomUtil.create('div','leaflet-control-center leaflet-bar');
-        div.innerHTML='<a href="#" title="Centrar ubicacion"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="3"/><path d="M12 2v4m0 12v4m10-10h-4M6 12H2"/><circle cx="12" cy="12" r="9"/></svg></a>';
-        div.onclick=function(e){e.preventDefault();e.stopPropagation();if(ultimoPunto)mapa.setView(ultimoPunto,16);};
-        return div;
-    }
-});
-new L.Control.Center({position:'topright'}).addTo(mapa);
 
 // Base path para que las rutas API funcionen tanto en / como en /dev/, /devdaniel/, etc.
 var basePath = (function(){
@@ -306,10 +283,18 @@ function actualizarMapa(lat,lon){
     window.rtCircles.push(c);
     if(ultimoPunto){
         var prevPunto=ultimoPunto;
+        // Dibujar linea recta inmediata para que no haya delay visual
+        var ptsAntes=rutaPolyline.getLatLngs().length;
+        var pts=rutaPolyline.getLatLngs();
+        pts.push(prevPunto);pts.push(p);
+        rutaPolyline.setLatLngs(pts);
+        // Luego reemplazar con ruta OSRM cuando llegue
         obtenerRutaOSRM(prevPunto,p,function(coords){
-            var pts=rutaPolyline.getLatLngs();
-            coords.forEach(function(c){pts.push(c);});
-            rutaPolyline.setLatLngs(pts);
+            // Quitar la linea recta temporal y poner la ruta real
+            var allPts=rutaPolyline.getLatLngs();
+            var base=allPts.slice(0,ptsAntes);
+            coords.forEach(function(c){base.push(c);});
+            rutaPolyline.setLatLngs(base);
         });
     }
     ultimoPunto=p;
@@ -510,7 +495,7 @@ function renderHistorico(datos){
         (function(d,idx){
             var fh=extraerFechaHora(d.timestamp_gps||d.fecha_recepcion);
             var row=document.createElement('tr');
-            row.innerHTML='<td>'+(idx+1)+'</td><td>'+fh.fecha+'</td><td>'+fh.hora+'</td><td>'+d.latitud+'</td><td>'+d.longitud+'</td><td><span class="proto-badge">'+(d.protocolo||'UDP')+'</span></td>';
+            row.innerHTML='<td>'+(idx+1)+'</td><td>'+fh.fecha+'</td><td>'+fh.hora+'</td><td>'+d.latitud+'</td><td>'+d.longitud+'</td>';
             row.style.cursor='pointer';
             var lat=parseFloat(d.latitud),lng=parseFloat(d.longitud);
             row.onclick=function(){
@@ -584,6 +569,34 @@ function limpiarFiltroHist(){
     document.getElementById('histCount').textContent='Selecciona un rango de fechas y presiona Filtrar';
     checkFiltroListo();
 }
+
+function toggleHistTable(){
+    var wrap=document.getElementById('histTableWrap');
+    var icon=document.getElementById('histToggleIcon');
+    if(wrap.style.display==='none'){
+        wrap.style.display='block';
+        icon.style.transform='rotate(0deg)';
+    } else {
+        wrap.style.display='none';
+        icon.style.transform='rotate(-90deg)';
+    }
+}
+
+// Fecha y hora por defecto: hoy en hora Colombia
+(function(){
+    var now=new Date();
+    var col=new Date(now.getTime()+now.getTimezoneOffset()*60000-5*3600000);
+    var fecha=col.toISOString().split('T')[0];
+    var hora=col.toTimeString().substring(0,5);
+    document.getElementById('histFechaDesde').value=fecha;
+    document.getElementById('histFechaHasta').value=fecha;
+    document.getElementById('histHoraDesde').value=hora;
+    document.getElementById('histHoraHasta').value=hora;
+    // Sincronizar restricciones min/max
+    document.getElementById('histFechaHasta').min=fecha;
+    document.getElementById('histFechaDesde').max=fecha;
+    checkFiltroListo();
+})();
 
 conectarWS();
 </script>
