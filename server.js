@@ -1,4 +1,3 @@
-require('dotenv').config();
 const dgram = require('dgram');
 const express = require('express');
 const http = require('http');
@@ -11,13 +10,13 @@ const UDP_PORT = parseInt(process.env.UDP_PORT) || 5005;
 const WEB_PORT = parseInt(process.env.PORT) || 8080;
 
 // =====================================================
-//  CONFIGURACION BASE DE DATOS — USANDO VARIABLES DE ENTORNO
+//  CONFIGURACION BASE DE DATOS — CREDENCIALES HARDCODED (TEMPORAL)
 // =====================================================
 const pool = new Pool({
-    host: process.env.DB_HOST,
-    user: process.env.DB_USER,
-    password: process.env.DB_PASSWORD,
-    database: process.env.DB_NAME,
+    host: 'database-1.culqegkq4tq5.us-east-1.rds.amazonaws.com',
+    user: 'postgres',
+    password: 'J50911711n-database',
+    database: 'gps_tracker',
     port: parseInt(process.env.DB_PORT) || 5432,
     ssl: { rejectUnauthorized: false } // Considera usar certificados CA de AWS en el futuro
 });
