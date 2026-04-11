@@ -142,8 +142,8 @@ function iniciarWeb() {
 
     const fs = require('fs');
     const instanceName = process.env.INSTANCE_NAME || 'GPS Tracker';
-    // Extraemos el ID del nombre de la instancia (ej: "JOSE", "DANIEL")
-    const currentId = instanceName.toLowerCase().split('-').pop();
+    // Extraemos el ID del nombre (ej: "GPS-DEV-JOSE" -> "jose") asegurando limpieza
+    const currentId = instanceName.toLowerCase().trim().split('-').pop();
 
     app.get('/', function(req, res) {
         const html = fs.readFileSync(path.join(__dirname, 'public/index.html'), 'utf8')
