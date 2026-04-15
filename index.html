@@ -186,49 +186,95 @@
             </div>
         </div>
     </div>
+    <!-- ── Vista de Filtro por Zona ────────────────────────────── -->
     <div class="view" id="view-zona">
         <div class="view-title">Filtro por Zona</div>
+        
         <div class="card">
             <div class="card-title">Configurar Zona</div>
-            <!-- Pista para el usuario: indica que debe hacer clic en el mapa para definir el centro -->
+            
+            <!-- Pista para el usuario -->
             <div class="zona-hint">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" width="18" height="18"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="3"/><line x1="12" y1="2" x2="12" y2="9"/><line x1="12" y1="15" x2="12" y2="22"/><line x1="2" y1="12" x2="9" y2="12"/><line x1="15" y1="12" x2="22" y2="12"/></svg>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" width="18" height="18">
+                    <circle cx="12" cy="12" r="10"></circle>
+                    <circle cx="12" cy="12" r="3"></circle>
+                    <line x1="12" y1="2" x2="12" y2="9"></line>
+                    <line x1="12" y1="15" x2="12" y2="22"></line>
+                    <line x1="2" y1="12" x2="9" y2="12"></line>
+                    <line x1="15" y1="12" x2="22" y2="12"></line>
+                </svg>
                 Haz clic en el mapa para colocar el centro de la zona de búsqueda
             </div>
+
             <!-- Coordenadas del centro seleccionado -->
             <div class="gps-grid" style="margin-bottom:16px;">
-                <div class="gps-item"><span class="gps-item-label">Latitud centro</span><span class="gps-item-value" id="zonaLat">---</span></div>
-                <div class="gps-item"><span class="gps-item-label">Longitud centro</span><span class="gps-item-value" id="zonaLon">---</span></div>
+                <div class="gps-item">
+                    <span class="gps-item-label">Latitud centro</span>
+                    <span class="gps-item-value" id="zonaLat">---</span>
+                </div>
+                <div class="gps-item">
+                    <span class="gps-item-label">Longitud centro</span>
+                    <span class="gps-item-value" id="zonaLon">---</span>
+                </div>
             </div>
+
             <!-- Control de radio (slider en metros) -->
             <div class="radio-row">
                 <label>Radio de búsqueda:</label>
                 <input type="range" id="zonaRadio" min="50" max="10000" step="50" value="200" oninput="onZonaRadioChange()">
                 <span class="radio-val" id="zonaRadioLabel">200 m</span>
             </div>
-            <!-- Filtro de fecha y hora (opcional) -->
-            <div class="card-title" style="margin-bottom:10px;">Rango de fechas (opcional)</div>
+
+            <!-- Mensaje de carga -->
             <div class="loading-msg" id="zonaLoading">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" width="18" height="18"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" width="18" height="18">
+                    <path d="M21 12a9 9 0 1 1-6.219-8.56"></path>
+                </svg>
                 <span>Consultando registros...</span>
             </div>
+
+            <!-- Botonera -->
             <div class="filter-bar">
-                <div class="filter-group">
-                    <label>Desde:</label>
-                    <input type="date" id="zonaFechaDesde">
-                    <input type="time" id="zonaHoraDesde">
-                </div>
-                <div class="filter-group">
-                    <label>Hasta:</label>
-                    <input type="date" id="zonaFechaHasta">
-                    <input type="time" id="zonaHoraHasta">
-                </div>
-                <button class="filter-btn" id="btnFiltrarZona" onclick="filtrarZona()" disabled>Filtrar</button>
+                <button class="filter-btn" id="btnFiltrarZona" onclick="filtrarZona()" disabled>Buscar en toda la historia</button>
                 <button class="filter-btn secondary" onclick="limpiarZona()">Limpiar</button>
             </div>
+            
             <p class="pkt-count" id="zonaCount">Haz clic en el mapa para definir el centro de la zona</p>
         </div>
-        <div class="card map-wrap" style="padding:0;overflow:hidden;"><div id="mapaZona"></div></div>
+
+        <!-- Mapa de la zona -->
+        <div class="card map-wrap" style="padding:0;overflow:hidden;">
+            <div id="mapaZona"></div>
+        </div>
+
+        <!-- TABLA DE RESULTADOS (Estilo histórico) -->
+        <div class="card">
+            <div class="card-title" style="cursor:pointer;user-select:none;" onclick="toggleZonaTable()">
+                Registros encontrados en Zona
+                <svg id="zonaToggleIcon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" width="16" height="16" style="margin-left:auto;transition:transform 0.3s;transform:rotate(-90deg);">
+                    <polyline points="6 9 12 15 18 9"></polyline>
+                </svg>
+            </div>
+            
+            <div id="zonaTableWrap" style="display:none;">
+                <div class="table-wrap">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>No.</th>
+                                <th>Fecha</th>
+                                <th>Hora (COL)</th>
+                                <th>Latitud</th>
+                                <th>Longitud</th>
+                            </tr>
+                        </thead>
+                        <tbody id="zonaBody">
+                            <!-- Los registros se cargan dinámicamente aquí -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
     </div>
 </div>
 
