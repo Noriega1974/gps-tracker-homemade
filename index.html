@@ -535,13 +535,13 @@ function renderHistorico(datos){
 
         // Se Fragmenta para OSRM, debería mejorar el tiempo de carga
         const tamanoFragmento = 40;
-        let delay = 0; // Contador para dealy, para evitar bloquear a OSRM
+        var delay = 0; // Contador para dealy, para evitar bloquear a OSRM
         for (let i = 0; i < puntosRuta.length; i += tamanoFragmento - 1) {
             let fragmento = puntosRuta.slice(i, i + tamanoFragmento);
             if (fragmento.length < 2) continue;
         
             let coords = fragmento.map(p => p[1].toFixed(6) + ',' + p[0].toFixed(6)).join(';');
-            let url = 'https://project-osrm.org' + coords + '?overview=full&geometries=geojson';
+            let url = 'https://router.project-osrm.org/route/v1/driving/' + coords + '?overview=full&geometries=geojson';
         
             // Se usa un setTimeout para no enviar todas las peticiones a la vez
             setTimeout(() => {
