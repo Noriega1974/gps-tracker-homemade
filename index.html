@@ -47,7 +47,7 @@
         .card-title{font-size:13px;font-weight:600;color:var(--txt2);text-transform:uppercase;letter-spacing:1px;margin-bottom:14px;display:flex;align-items:center;gap:8px;}
         .card-title::before{content:'';width:3px;height:16px;border-radius:2px;background:var(--accent);}
         .map-wrap{max-width:900px;margin:0 auto;}
-        #mapa,#mapaHist{
+        #mapa,#mapaHist,#mapaZona{
         width:100%;
         height:480px;
         border-radius:12px;
@@ -94,7 +94,7 @@
         @keyframes spin{from{transform:rotate(0deg);}to{transform:rotate(360deg);}}
         [data-theme="dark"] .leaflet-tile-pane{filter:brightness(0.7) contrast(1.1) saturate(0.8);}
         [data-theme="dark"] .leaflet-control-zoom a{background:var(--bg2)!important;color:var(--txt1)!important;border-color:var(--brd)!important;}
-        @media(max-width:768px){.sidebar{transform:translateX(calc(-1 * var(--sidebar-w)));}.sidebar.open{transform:translateX(0);}.hamburger{display:flex;}.main{margin-left:0;padding:70px 16px 24px;}.gps-grid{grid-template-columns:1fr;}#mapa,#mapaHist{height:300px;}}
+        @media(max-width:768px){.sidebar{transform:translateX(calc(-1 * var(--sidebar-w)));}.sidebar.open{transform:translateX(0);}.hamburger{display:flex;}.main{margin-left:0;padding:70px 16px 24px;}.gps-grid{grid-template-columns:1fr;}#mapa,#mapaHist,#mapaZona{height:300px;}}
         .sidebar {
         z-index: 9999 !important;
         }
@@ -105,6 +105,13 @@
         position: relative;
         z-index: 1;
         }
+        /* ── Filtro por Zona ────────────────────────────── */
+        .zona-hint{display:flex;align-items:center;gap:10px;padding:11px 16px;background:var(--accent-lt);border-radius:10px;font-size:13px;color:var(--accent);font-weight:500;margin-bottom:16px;}
+        .zona-hint svg{flex-shrink:0;}
+        .radio-row{display:flex;align-items:center;gap:14px;margin-bottom:16px;flex-wrap:wrap;}
+        .radio-row label{font-size:13px;font-weight:500;color:var(--txt2);}
+        .radio-row input[type="range"]{flex:1;min-width:140px;accent-color:var(--accent);cursor:pointer;}
+        .radio-val{font-family:'JetBrains Mono',monospace;font-size:14px;font-weight:600;color:var(--accent);min-width:70px;text-align:right;}
     </style>
 </head>
 <body>
@@ -116,6 +123,7 @@
         <div class="side-section-title">Vistas</div>
         <div class="side-item active" onclick="showView('realtime',this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>Real-Time</div>
         <div class="side-item" onclick="showView('historical',this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 3v18h18"/><polyline points="18 9 12 15 9 12 3 18"/></svg>Historical View</div>
+        <div class="side-item" onclick="showView('zona',this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="3"/><line x1="12" y1="2" x2="12" y2="9"/><line x1="12" y1="15" x2="12" y2="22"/><line x1="2" y1="12" x2="9" y2="12"/><line x1="15" y1="12" x2="22" y2="12"/></svg>Filtro por Zona</div>
     </div>
     <div class="side-section">
         <div class="side-section-title">Rastreadores</div>
@@ -178,6 +186,50 @@
             </div>
         </div>
     </div>
+    <div class="view" id="view-zona">
+        <div class="view-title">Filtro por Zona</div>
+        <div class="card">
+            <div class="card-title">Configurar Zona</div>
+            <!-- Pista para el usuario: indica que debe hacer clic en el mapa para definir el centro -->
+            <div class="zona-hint">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" width="18" height="18"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="3"/><line x1="12" y1="2" x2="12" y2="9"/><line x1="12" y1="15" x2="12" y2="22"/><line x1="2" y1="12" x2="9" y2="12"/><line x1="15" y1="12" x2="22" y2="12"/></svg>
+                Haz clic en el mapa para colocar el centro de la zona de búsqueda
+            </div>
+            <!-- Coordenadas del centro seleccionado -->
+            <div class="gps-grid" style="margin-bottom:16px;">
+                <div class="gps-item"><span class="gps-item-label">Latitud centro</span><span class="gps-item-value" id="zonaLat">---</span></div>
+                <div class="gps-item"><span class="gps-item-label">Longitud centro</span><span class="gps-item-value" id="zonaLon">---</span></div>
+            </div>
+            <!-- Control de radio (slider en metros) -->
+            <div class="radio-row">
+                <label>Radio de búsqueda:</label>
+                <input type="range" id="zonaRadio" min="50" max="10000" step="50" value="200" oninput="onZonaRadioChange()">
+                <span class="radio-val" id="zonaRadioLabel">200 m</span>
+            </div>
+            <!-- Filtro de fecha y hora (opcional) -->
+            <div class="card-title" style="margin-bottom:10px;">Rango de fechas (opcional)</div>
+            <div class="loading-msg" id="zonaLoading">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" width="18" height="18"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>
+                <span>Consultando registros...</span>
+            </div>
+            <div class="filter-bar">
+                <div class="filter-group">
+                    <label>Desde:</label>
+                    <input type="date" id="zonaFechaDesde">
+                    <input type="time" id="zonaHoraDesde">
+                </div>
+                <div class="filter-group">
+                    <label>Hasta:</label>
+                    <input type="date" id="zonaFechaHasta">
+                    <input type="time" id="zonaHoraHasta">
+                </div>
+                <button class="filter-btn" id="btnFiltrarZona" onclick="filtrarZona()" disabled>Filtrar</button>
+                <button class="filter-btn secondary" onclick="limpiarZona()">Limpiar</button>
+            </div>
+            <p class="pkt-count" id="zonaCount">Haz clic en el mapa para definir el centro de la zona</p>
+        </div>
+        <div class="card map-wrap" style="padding:0;overflow:hidden;"><div id="mapaZona"></div></div>
+    </div>
 </div>
 
 <script>
@@ -190,6 +242,9 @@ function setTheme(t){
     icon.innerHTML=t==='dark'?'<path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>':'<circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>';
     if(rutaPolyline)rutaPolyline.setStyle({color:getCS('--route')});
     if(rutaHistPolyline)rutaHistPolyline.setStyle({color:getCS('--route')});
+    // Actualizar colores de la zona al cambiar el tema
+    if(zonaPolyline)zonaPolyline.setStyle({color:getCS('--marker')});
+    if(zonaCircle)zonaCircle.setStyle({color:getCS('--accent'),fillColor:getCS('--accent')});
 }
 function toggleTheme(){setTheme(currentTheme==='light'?'dark':'light');}
 function getCS(v){return getComputedStyle(document.documentElement).getPropertyValue(v).trim();}
@@ -211,8 +266,25 @@ function showView(name,el){
             mapaHistInit=true;
         },150);
     }
+    // Inicialización lazy del mapa de zona (solo cuando se abre por primera vez)
+    if(name==='zona'&&!mapaZonaInit){
+        setTimeout(function(){
+            mapaZona=L.map('mapaZona').setView(ultimoPunto||[10.9685,-74.7813],13);
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{attribution:'&copy; OpenStreetMap'}).addTo(mapaZona);
+            zonaPolyline=L.polyline([],{color:getCS('--marker'),weight:5}).addTo(mapaZona);
+            // Clic en el mapa para definir el centro de la zona
+            mapaZona.on('click',function(e){
+                zonaCenter=[e.latlng.lat,e.latlng.lng];
+                actualizarZonaVisual();
+                actualizarCoordZona();
+                checkZonaLista();
+            });
+            mapaZonaInit=true;
+        },150);
+    }
     if(name==='realtime')setTimeout(function(){mapa.invalidateSize();},150);
     if(name==='historical'&&mapaHist)setTimeout(function(){mapaHist.invalidateSize();},150);
+    if(name==='zona'&&mapaZona)setTimeout(function(){mapaZona.invalidateSize();},150);
 }
 
 var mapa=L.map('mapa').setView([10.9685,-74.7813],13);
@@ -597,6 +669,165 @@ function toggleHistTable(){
     document.getElementById('histFechaDesde').max=fecha;
     checkFiltroListo();
 })();
+
+/* ═══════════════════════════════════════════════════════
+   FILTRO POR ZONA — Variables
+   ═══════════════════════════════════════════════════════ */
+var mapaZonaInit=false,mapaZona,zonaPolyline=null;
+var zonaMarcador=null,zonaCircle=null,zonaCenter=null;
+window.zonaCircles=[];
+
+/* ═══════════════════════════════════════════════════════
+   FILTRO POR ZONA — Actualizar visual del mapa
+   ═══════════════════════════════════════════════════════ */
+
+// Redibuja el marcador central y el círculo de radio cada vez que cambia el centro o el radio
+function actualizarZonaVisual(){
+    if(!zonaCenter||!mapaZona) return;
+    var radio=parseInt(document.getElementById('zonaRadio').value)||200;
+    var ac=getCS('--accent');
+    if(zonaMarcador){mapaZona.removeLayer(zonaMarcador);}
+    if(zonaCircle){mapaZona.removeLayer(zonaCircle);}
+    zonaMarcador=L.marker(zonaCenter).addTo(mapaZona);
+    zonaCircle=L.circle(zonaCenter,{
+        radius:radio,
+        color:ac,
+        fillColor:ac,
+        fillOpacity:0.12,
+        weight:2,
+        dashArray:'6,5'
+    }).addTo(mapaZona);
+}
+
+// Refleja las coordenadas del centro en los campos de texto
+function actualizarCoordZona(){
+    if(!zonaCenter) return;
+    document.getElementById('zonaLat').textContent=zonaCenter[0].toFixed(6);
+    document.getElementById('zonaLon').textContent=zonaCenter[1].toFixed(6);
+}
+
+// Habilita el botón Filtrar solo si hay un centro colocado en el mapa
+function checkZonaLista(){
+    document.getElementById('btnFiltrarZona').disabled=(zonaCenter===null);
+}
+
+// Callback del slider de radio: actualiza la etiqueta y redibuja el círculo en el mapa
+function onZonaRadioChange(){
+    var val=parseInt(document.getElementById('zonaRadio').value)||200;
+    document.getElementById('zonaRadioLabel').textContent=val+' m';
+    actualizarZonaVisual();
+}
+
+/* ═══════════════════════════════════════════════════════
+   FILTRO POR ZONA — Consulta al servidor
+   ═══════════════════════════════════════════════════════ */
+
+function filtrarZona(){
+    if(!zonaCenter) return;
+    var radio=parseInt(document.getElementById('zonaRadio').value)||200;
+    var desde=document.getElementById('zonaFechaDesde').value;
+    var hasta=document.getElementById('zonaFechaHasta').value;
+    var horaDesde=document.getElementById('zonaHoraDesde').value;
+    var horaHasta=document.getElementById('zonaHoraHasta').value;
+
+    var params=['lat='+zonaCenter[0],'lon='+zonaCenter[1],'radio='+radio];
+    if(desde) params.push('desde='+desde);
+    if(hasta) params.push('hasta='+hasta);
+    if(horaDesde) params.push('horaDesde='+horaDesde);
+    if(horaHasta) params.push('horaHasta='+horaHasta);
+    var url=basePath+'api/zona?'+params.join('&');
+
+    document.getElementById('zonaLoading').classList.add('show');
+    document.getElementById('zonaCount').textContent='Consultando...';
+
+    fetch(url).then(function(r){return r.json();}).then(function(data){
+        document.getElementById('zonaLoading').classList.remove('show');
+        if(Array.isArray(data)){
+            renderZona(data);
+        } else {
+            document.getElementById('zonaCount').textContent='Error al consultar registros';
+        }
+    }).catch(function(err){
+        document.getElementById('zonaLoading').classList.remove('show');
+        document.getElementById('zonaCount').textContent='Error de conexion';
+        console.error('[ZONA] Fetch error:',err);
+    });
+}
+
+function renderZona(datos){
+    // Limpiar puntos y ruta anteriores (se conservan el marcador y círculo de zona)
+    if(window.zonaCircles){window.zonaCircles.forEach(function(c){mapaZona.removeLayer(c);});}
+    window.zonaCircles=[];
+    if(zonaPolyline) zonaPolyline.setLatLngs([]);
+
+    document.getElementById('zonaCount').textContent='Puntos encontrados en la zona: '+datos.length;
+    if(datos.length===0){
+        document.getElementById('zonaCount').textContent='No hay registros en esa zona para el rango seleccionado';
+        return;
+    }
+
+    // Se usa --marker (naranja) para diferenciar visualmente de la línea del histórico (--route)
+    var routeColor=getCS('--marker');
+    var todosPuntos=datos.map(function(d){return[parseFloat(d.latitud),parseFloat(d.longitud)];});
+
+    // Dibujar cada punto como círculo en el mapa
+    todosPuntos.forEach(function(p){
+        var c=L.circleMarker(p,{radius:5,color:routeColor,fillColor:routeColor,fillOpacity:0.85,weight:2}).addTo(mapaZona);
+        window.zonaCircles.push(c);
+    });
+
+    // Reducir waypoints para OSRM (misma lógica que en histórico)
+    var puntosRuta=[];
+    for(var i=0;i<todosPuntos.length;i++){
+        if(puntosRuta.length===0||distanciaM(puntosRuta[puntosRuta.length-1],todosPuntos[i])>30)
+            puntosRuta.push(todosPuntos[i]);
+    }
+
+    if(puntosRuta.length>=2){
+        // Línea recta como fallback inmediato mientras llega la respuesta de OSRM
+        zonaPolyline.setLatLngs(puntosRuta);
+        zonaPolyline.setStyle({color:routeColor,weight:4,opacity:0.6,dashArray:'5,8'});
+        var coords=puntosRuta.map(function(p){return p[1].toFixed(6)+','+p[0].toFixed(6);}).join(';');
+        var osrmUrl='https://router.project-osrm.org/route/v1/driving/'+coords+'?overview=full&geometries=geojson';
+        console.log('[ZONA] OSRM: '+puntosRuta.length+' waypoints');
+        fetch(osrmUrl).then(function(r){return r.json();}).then(function(data){
+            if(data.code==='Ok'&&data.routes.length>0){
+                var routeCoords=data.routes[0].geometry.coordinates.map(function(c){return[c[1],c[0]];});
+                zonaPolyline.setLatLngs(routeCoords);
+                zonaPolyline.setStyle({color:routeColor,weight:5,opacity:0.85,dashArray:''});
+                console.log('[ZONA] Ruta dibujada: '+routeCoords.length+' coords');
+            } else {
+                console.log('[ZONA] OSRM sin ruta:',data.code);
+            }
+        }).catch(function(err){
+            console.log('[ZONA] OSRM error:',err);
+        });
+    }
+
+    // Ajustar la vista para incluir la zona y todos los puntos encontrados
+    var bounds=L.latLngBounds(todosPuntos);
+    if(zonaCircle) bounds.extend(zonaCircle.getBounds());
+    mapaZona.fitBounds(bounds,{padding:[40,40]});
+}
+
+function limpiarZona(){
+    // Eliminar del mapa el marcador, el círculo de zona y los puntos de resultado
+    if(zonaMarcador&&mapaZona){mapaZona.removeLayer(zonaMarcador);zonaMarcador=null;}
+    if(zonaCircle&&mapaZona){mapaZona.removeLayer(zonaCircle);zonaCircle=null;}
+    if(window.zonaCircles){window.zonaCircles.forEach(function(c){mapaZona.removeLayer(c);});window.zonaCircles=[];}
+    if(zonaPolyline) zonaPolyline.setLatLngs([]);
+    zonaCenter=null;
+    document.getElementById('zonaLat').textContent='---';
+    document.getElementById('zonaLon').textContent='---';
+    document.getElementById('zonaRadio').value=200;
+    document.getElementById('zonaRadioLabel').textContent='200 m';
+    document.getElementById('zonaFechaDesde').value='';
+    document.getElementById('zonaFechaHasta').value='';
+    document.getElementById('zonaHoraDesde').value='';
+    document.getElementById('zonaHoraHasta').value='';
+    document.getElementById('zonaCount').textContent='Haz clic en el mapa para definir el centro de la zona';
+    checkZonaLista();
+}
 
 conectarWS();
 </script>
