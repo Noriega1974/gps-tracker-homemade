@@ -557,6 +557,8 @@ function renderHistorico(datos){
                         
                         // Guardamos referencia para poder borrarla en la siguiente búsqueda
                         window.histCircles.push(poly); 
+                    } else {
+                        console.error("OSRM error:", data.code, data.message);
                     }
                 })
                 .catch(err => console.error("[HIST] Error en fragmento OSRM:", err));
