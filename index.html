@@ -66,7 +66,6 @@
         td{padding:9px 14px;border-bottom:1px solid var(--brd-lt);font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--txt1);transition:color var(--t);}
         tr:hover td{background:var(--accent-lt);}
         tr.selected td{background:var(--accent-lt);font-weight:600;}
-        .proto-badge{display:inline-block;padding:2px 8px;border-radius:4px;background:var(--accent-lt);color:var(--accent);font-weight:600;font-size:11px;}
         .pkt-count{font-size:13px;color:var(--txt2);margin-bottom:12px;font-weight:500;}
         .filter-bar{display:flex;align-items:center;gap:12px;margin-bottom:16px;flex-wrap:wrap;}
         .filter-bar label{font-size:13px;font-weight:500;color:var(--txt2);}
@@ -168,7 +167,16 @@
             </div>
         </div>
         <div class="card map-wrap" style="padding:0;overflow:hidden;"><div id="mapaHist"></div></div>
-        <div class="card"><div class="card-title">Registros Historicos</div><p class="pkt-count" id="histCount">Selecciona un rango de fechas y presiona Filtrar</p><div class="table-wrap"><table><thead><tr><th>No.</th><th>Fecha</th><th>Hora (COL)</th><th>Latitud</th><th>Longitud</th><th>Protocolo</th></tr></thead><tbody id="histBody"></tbody></table></div></div>
+        <div class="card">
+            <div class="card-title" style="cursor:pointer;user-select:none;" onclick="toggleHistTable()">
+                Registros Historicos
+                <svg id="histToggleIcon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" width="16" height="16" style="margin-left:auto;transition:transform 0.3s;transform:rotate(-90deg);"><polyline points="6 9 12 15 18 9"/></svg>
+            </div>
+            <div id="histTableWrap" style="display:none;">
+                <p class="pkt-count" id="histCount">Selecciona un rango de fechas y presiona Filtrar</p>
+                <div class="table-wrap"><table><thead><tr><th>No.</th><th>Fecha</th><th>Hora (COL)</th><th>Latitud</th><th>Longitud</th></tr></thead><tbody id="histBody"></tbody></table></div>
+            </div>
+        </div>
     </div>
 </div>
 
@@ -275,10 +283,18 @@ function actualizarMapa(lat,lon){
     window.rtCircles.push(c);
     if(ultimoPunto){
         var prevPunto=ultimoPunto;
+        // Dibujar linea recta inmediata para que no haya delay visual
+        var ptsAntes=rutaPolyline.getLatLngs().length;
+        var pts=rutaPolyline.getLatLngs();
+        pts.push(prevPunto);pts.push(p);
+        rutaPolyline.setLatLngs(pts);
+        // Luego reemplazar con ruta OSRM cuando llegue
         obtenerRutaOSRM(prevPunto,p,function(coords){
-            var pts=rutaPolyline.getLatLngs();
-            coords.forEach(function(c){pts.push(c);});
-            rutaPolyline.setLatLngs(pts);
+            // Quitar la linea recta temporal y poner la ruta real
+            var allPts=rutaPolyline.getLatLngs();
+            var base=allPts.slice(0,ptsAntes);
+            coords.forEach(function(c){base.push(c);});
+            rutaPolyline.setLatLngs(base);
         });
     }
     ultimoPunto=p;
@@ -479,7 +495,7 @@ function renderHistorico(datos){
         (function(d,idx){
             var fh=extraerFechaHora(d.timestamp_gps||d.fecha_recepcion);
             var row=document.createElement('tr');
-            row.innerHTML='<td>'+(idx+1)+'</td><td>'+fh.fecha+'</td><td>'+fh.hora+'</td><td>'+d.latitud+'</td><td>'+d.longitud+'</td><td><span class="proto-badge">'+(d.protocolo||'UDP')+'</span></td>';
+            row.innerHTML='<td>'+(idx+1)+'</td><td>'+fh.fecha+'</td><td>'+fh.hora+'</td><td>'+d.latitud+'</td><td>'+d.longitud+'</td>';
             row.style.cursor='pointer';
             var lat=parseFloat(d.latitud),lng=parseFloat(d.longitud);
             row.onclick=function(){
@@ -512,29 +528,39 @@ function renderHistorico(datos){
     if(todosPuntos.length>1) mapaHist.fitBounds(L.latLngBounds(todosPuntos),{padding:[40,40]});
     else mapaHist.setView(last,15);
 
-    if(puntosRuta.length>=2){
-        var coords=puntosRuta.map(function(p){return p[1].toFixed(6)+','+p[0].toFixed(6);}).join(';');
-        var url='https://router.project-osrm.org/route/v1/driving/'+coords+'?overview=full&geometries=geojson';
-        console.log('[HIST] OSRM: '+puntosRuta.length+' waypoints, URL: '+url.length+' chars');
-        fetch(url).then(function(r){
-            console.log('[HIST] OSRM status: '+r.status);
-            return r.json();
-        }).then(function(data){
-            if(data.code==='Ok'&&data.routes.length>0){
-                var routeCoords=data.routes[0].geometry.coordinates.map(function(c){return[c[1],c[0]];});
-                rutaHistPolyline.setLatLngs(routeCoords);
-                rutaHistPolyline.setStyle({color:routeColor,weight:5,opacity:0.85});
-                console.log('[HIST] Ruta dibujada: '+routeCoords.length+' coords');
-            } else {
-                console.log('[HIST] OSRM sin ruta:', data.code);
-                rutaHistPolyline.setLatLngs(puntosRuta);
-                rutaHistPolyline.setStyle({color:routeColor,weight:4,opacity:0.7});
-            }
-        }).catch(function(err){
-            console.log('[HIST] OSRM error:', err);
-            rutaHistPolyline.setLatLngs(puntosRuta);
-            rutaHistPolyline.setStyle({color:routeColor,weight:4,opacity:0.7});
-        });
+    if (puntosRuta.length >= 2) {
+        // Se dibuja primero la línea recta, así evitamos
+        rutaHistPolyline.setLatLngs(puntosRuta);
+        rutaHistPolyline.setStyle({ color: routeColor, weight: 3, dashArray: '5, 10', opacity: 0.5 });
+
+        // Se Fragmenta para OSRM, debería mejorar el tiempo de carga
+        const tamanoFragmento = 40; 
+        for (let i = 0; i < puntosRuta.length; i += tamanoFragmento - 1) {
+            let fragmento = puntosRuta.slice(i, i + tamanoFragmento);
+            if (fragmento.length < 2) continue;
+
+            let coords = fragmento.map(p => p[1].toFixed(6) + ',' + p[0].toFixed(6)).join(';');
+            let url = 'https://router.project-osrm.org/route/v1/driving/' + coords + '?overview=full&geometries=geojson';
+
+            fetch(url)
+                .then(r => r.json())
+                .then(data => {
+                    if (data.code === 'Ok' && data.routes.length > 0) {
+                        let routeCoords = data.routes[0].geometry.coordinates.map(c => [c[1], c[0]]);
+                        
+                        // Se crea la polilinea para el fragmento
+                        let poly = L.polyline(routeCoords, {
+                            color: routeColor, 
+                            weight: 5, 
+                            opacity: 0.85
+                        }).addTo(mapaHist);
+                        
+                        // Guardamos referencia para poder borrarla en la siguiente búsqueda
+                        window.histCircles.push(poly); 
+                    }
+                })
+                .catch(err => console.error("[HIST] Error en fragmento OSRM:", err));
+        }
     }
 }
 
@@ -553,6 +579,34 @@ function limpiarFiltroHist(){
     document.getElementById('histCount').textContent='Selecciona un rango de fechas y presiona Filtrar';
     checkFiltroListo();
 }
+
+function toggleHistTable(){
+    var wrap=document.getElementById('histTableWrap');
+    var icon=document.getElementById('histToggleIcon');
+    if(wrap.style.display==='none'){
+        wrap.style.display='block';
+        icon.style.transform='rotate(0deg)';
+    } else {
+        wrap.style.display='none';
+        icon.style.transform='rotate(-90deg)';
+    }
+}
+
+// Fecha y hora por defecto: hoy en hora Colombia
+(function(){
+    var now=new Date();
+    var col=new Date(now.getTime()+now.getTimezoneOffset()*60000-5*3600000);
+    var fecha=col.toISOString().split('T')[0];
+    var hora=col.toTimeString().substring(0,5);
+    document.getElementById('histFechaDesde').value=fecha;
+    document.getElementById('histFechaHasta').value=fecha;
+    document.getElementById('histHoraDesde').value=hora;
+    document.getElementById('histHoraHasta').value=hora;
+    // Sincronizar restricciones min/max
+    document.getElementById('histFechaHasta').min=fecha;
+    document.getElementById('histFechaDesde').max=fecha;
+    checkFiltroListo();
+})();
 
 conectarWS();
 </script>
