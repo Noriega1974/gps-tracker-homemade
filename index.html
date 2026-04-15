@@ -723,11 +723,19 @@ var mapaZonaInit=false,mapaZona,zonaPolyline=null;
 var zonaMarcador=null,zonaCircle=null,zonaCenter=null;
 window.zonaCircles=[];
 
-/* ═══════════════════════════════════════════════════════
-   FILTRO POR ZONA — Actualizar visual del mapa
-   ═══════════════════════════════════════════════════════ */
+// Control de apertura/cierre de la tabla de zona
+function toggleZonaTable(){
+    var wrap=document.getElementById('zonaTableWrap');
+    var icon=document.getElementById('zonaToggleIcon');
+    if(wrap.style.display==='none'){
+        wrap.style.display='block';
+        icon.style.transform='rotate(0deg)';
+    } else {
+        wrap.style.display='none';
+        icon.style.transform='rotate(-90deg)';
+    }
+}
 
-// Redibuja el marcador central y el círculo de radio cada vez que cambia el centro o el radio
 function actualizarZonaVisual(){
     if(!zonaCenter||!mapaZona) return;
     var radio=parseInt(document.getElementById('zonaRadio').value)||200;
@@ -745,47 +753,33 @@ function actualizarZonaVisual(){
     }).addTo(mapaZona);
 }
 
-// Refleja las coordenadas del centro en los campos de texto
 function actualizarCoordZona(){
     if(!zonaCenter) return;
     document.getElementById('zonaLat').textContent=zonaCenter[0].toFixed(6);
     document.getElementById('zonaLon').textContent=zonaCenter[1].toFixed(6);
 }
 
-// Habilita el botón Filtrar solo si hay un centro colocado en el mapa
 function checkZonaLista(){
     document.getElementById('btnFiltrarZona').disabled=(zonaCenter===null);
 }
 
-// Callback del slider de radio: actualiza la etiqueta y redibuja el círculo en el mapa
 function onZonaRadioChange(){
     var val=parseInt(document.getElementById('zonaRadio').value)||200;
     document.getElementById('zonaRadioLabel').textContent=val+' m';
     actualizarZonaVisual();
 }
 
-/* ═══════════════════════════════════════════════════════
-   FILTRO POR ZONA — Consulta al servidor
-   ═══════════════════════════════════════════════════════ */
-
+/* FILTRO POR ZONA — Consulta al servidor sin fechas */
 function filtrarZona(){
     if(!zonaCenter) return;
     var radio=parseInt(document.getElementById('zonaRadio').value)||200;
-    var desde=document.getElementById('zonaFechaDesde').value;
-    var hasta=document.getElementById('zonaFechaHasta').value;
-    var horaDesde=document.getElementById('zonaHoraDesde').value;
-    var horaHasta=document.getElementById('zonaHoraHasta').value;
-
+    // Ya no se extraen valores de fecha/hora del DOM
     var params=['lat='+zonaCenter[0],'lon='+zonaCenter[1],'radio='+radio];
-    if(desde) params.push('desde='+desde);
-    if(hasta) params.push('hasta='+hasta);
-    if(horaDesde) params.push('horaDesde='+horaDesde);
-    if(horaHasta) params.push('horaHasta='+horaHasta);
+    
     var url=basePath+'api/zona?'+params.join('&');
-
     document.getElementById('zonaLoading').classList.add('show');
     document.getElementById('zonaCount').textContent='Consultando...';
-
+    
     fetch(url).then(function(r){return r.json();}).then(function(data){
         document.getElementById('zonaLoading').classList.remove('show');
         if(Array.isArray(data)){
@@ -801,63 +795,57 @@ function filtrarZona(){
 }
 
 function renderZona(datos){
-    // Limpiar puntos y ruta anteriores (se conservan el marcador y círculo de zona)
+    var tbody=document.getElementById('zonaBody');
+    tbody.innerHTML='';
+    
+    // Limpiar visuales anteriores
     if(window.zonaCircles){window.zonaCircles.forEach(function(c){mapaZona.removeLayer(c);});}
     window.zonaCircles=[];
     if(zonaPolyline) zonaPolyline.setLatLngs([]);
+    
+    document.getElementById('zonaCount').textContent='Puntos encontrados: '+datos.length;
+    if(datos.length===0) return;
 
-    document.getElementById('zonaCount').textContent='Puntos encontrados en la zona: '+datos.length;
-    if(datos.length===0){
-        document.getElementById('zonaCount').textContent='No hay registros en esa zona para el rango seleccionado';
-        return;
-    }
-
-    // Se usa --marker (naranja) para diferenciar visualmente de la línea del histórico (--route)
     var routeColor=getCS('--marker');
-    var todosPuntos=datos.map(function(d){return[parseFloat(d.latitud),parseFloat(d.longitud)];});
+    var todosPuntos=[];
 
-    // Dibujar cada punto como círculo en el mapa
-    todosPuntos.forEach(function(p){
-        var c=L.circleMarker(p,{radius:5,color:routeColor,fillColor:routeColor,fillOpacity:0.85,weight:2}).addTo(mapaZona);
-        window.zonaCircles.push(c);
-    });
+    for(var i=0;i<datos.length;i++){
+        (function(d,idx){
+            var fh=extraerFechaHora(d.timestamp_gps||d.fecha_recepcion);
+            var p=[parseFloat(d.latitud),parseFloat(d.longitud)];
+            todosPuntos.push(p);
 
-    // Reducir waypoints para OSRM (misma lógica que en histórico)
-    var puntosRuta=[];
-    for(var i=0;i<todosPuntos.length;i++){
-        if(puntosRuta.length===0||distanciaM(puntosRuta[puntosRuta.length-1],todosPuntos[i])>30)
-            puntosRuta.push(todosPuntos[i]);
+            // Crear marcador con POPUP de tiempo
+            var c=L.circleMarker(p,{
+                radius:5,color:routeColor,fillColor:routeColor,fillOpacity:0.85,weight:2
+            }).addTo(mapaZona);
+            
+            c.bindPopup(`<strong>Visto el:</strong><br>${fh.fecha}<br>${fh.hora}`);
+            window.zonaCircles.push(c);
+
+            // Crear fila en tabla interactiva
+            var row=document.createElement('tr');
+            row.innerHTML='<td>'+(idx+1)+'</td><td>'+fh.fecha+'</td><td>'+fh.hora+'</td><td>'+d.latitud+'</td><td>'+d.longitud+'</td>';
+            row.style.cursor='pointer';
+            row.onclick=function(){
+                var prev=tbody.querySelector('.selected');if(prev)prev.classList.remove('selected');
+                this.classList.add('selected');
+                mapaZona.setView(p,17);
+                c.openPopup();
+            };
+            tbody.appendChild(row);
+        })(datos[i],i);
     }
 
-    if(puntosRuta.length>=2){
-        // Línea recta como fallback inmediato mientras llega la respuesta de OSRM
-        zonaPolyline.setLatLngs(puntosRuta);
-        zonaPolyline.setStyle({color:routeColor,weight:4,opacity:0.6,dashArray:'5,8'});
-        var coords=puntosRuta.map(function(p){return p[1].toFixed(6)+','+p[0].toFixed(6);}).join(';');
-        var osrmUrl='https://router.project-osrm.org/route/v1/driving/'+coords+'?overview=full&geometries=geojson';
-        console.log('[ZONA] OSRM: '+puntosRuta.length+' waypoints');
-        fetch(osrmUrl).then(function(r){return r.json();}).then(function(data){
-            if(data.code==='Ok'&&data.routes.length>0){
-                var routeCoords=data.routes[0].geometry.coordinates.map(function(c){return[c[1],c[0]];});
-                zonaPolyline.setLatLngs(routeCoords);
-                zonaPolyline.setStyle({color:routeColor,weight:5,opacity:0.85,dashArray:''});
-                console.log('[ZONA] Ruta dibujada: '+routeCoords.length+' coords');
-            } else {
-                console.log('[ZONA] OSRM sin ruta:',data.code);
-            }
-        }).catch(function(err){
-            console.log('[ZONA] OSRM error:',err);
-        });
+    // Ajustar vista del mapa
+    if(todosPuntos.length>0){
+        var bounds=L.latLngBounds(todosPuntos);
+        if(zonaCircle) bounds.extend(zonaCircle.getBounds());
+        mapaZona.fitBounds(bounds,{padding:[40,40]});
     }
-
-    // Ajustar la vista para incluir la zona y todos los puntos encontrados
-    var bounds=L.latLngBounds(todosPuntos);
-    if(zonaCircle) bounds.extend(zonaCircle.getBounds());
-    mapaZona.fitBounds(bounds,{padding:[40,40]});
 }
 
 function limpiarZona(){
-    // Eliminar del mapa el marcador, el círculo de zona y los puntos de resultado
     if(zonaMarcador&&mapaZona){mapaZona.removeLayer(zonaMarcador);zonaMarcador=null;}
     if(zonaCircle&&mapaZona){mapaZona.removeLayer(zonaCircle);zonaCircle=null;}
     if(window.zonaCircles){window.zonaCircles.forEach(function(c){mapaZona.removeLayer(c);});window.zonaCircles=[];}
@@ -867,11 +855,8 @@ function limpiarZona(){
     document.getElementById('zonaLon').textContent='---';
     document.getElementById('zonaRadio').value=200;
     document.getElementById('zonaRadioLabel').textContent='200 m';
-    document.getElementById('zonaFechaDesde').value='';
-    document.getElementById('zonaFechaHasta').value='';
-    document.getElementById('zonaHoraDesde').value='';
-    document.getElementById('zonaHoraHasta').value='';
-    document.getElementById('zonaCount').textContent='Haz clic en el mapa para definir el centro de la zona';
+    document.getElementById('zonaBody').innerHTML='';
+    document.getElementById('zonaCount').textContent='Haz clic en el mapa para definir el centro';
     checkZonaLista();
 }
 
