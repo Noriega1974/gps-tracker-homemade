@@ -188,6 +188,62 @@ function iniciarWeb() {
         }
     });
 
+    // Filtro por zona geografica — devuelve los registros dentro de un radio (metros) desde un punto dado
+    // Params: lat, lon (centro), radio (metros), desde, hasta, horaDesde, horaHasta (opcionales)
+    app.get('/api/zona', async function(req, res) {
+        try {
+            var lat      = parseFloat(req.query.lat);
+            var lon      = parseFloat(req.query.lon);
+            var radio    = parseFloat(req.query.radio) || 200;
+            var desde    = req.query.desde    || null;
+            var hasta    = req.query.hasta    || null;
+            var horaDesde = req.query.horaDesde || null;
+            var horaHasta = req.query.horaHasta || null;
+
+            if (isNaN(lat) || isNaN(lon)) {
+                return res.status(400).json({ error: 'Coordenadas invalidas' });
+            }
+
+            // Haversine en SQL para calcular distancia en metros desde el centro dado.
+            // LEAST(1.0, ...) previene errores de dominio en acos por imprecisión de punto flotante.
+            var distExpr =
+                '(6371000 * acos(LEAST(1.0, ' +
+                '  cos(radians($1)) * cos(radians(latitud::float)) * ' +
+                '  cos(radians(longitud::float) - radians($2)) + ' +
+                '  sin(radians($1)) * sin(radians(latitud::float))' +
+                ')))';
+
+            var conditions = [distExpr + ' <= $3'];
+            var params = [lat, lon, radio];
+            var idx = 4;
+
+            if (desde) {
+                var tsDesde = desde + ' ' + (horaDesde ? horaDesde + ':00' : '00:00:00');
+                conditions.push('timestamp_gps >= $' + idx);
+                params.push(tsDesde);
+                idx++;
+            }
+
+            if (hasta) {
+                var tsHasta = hasta + ' ' + (horaHasta ? horaHasta + ':00' : '23:59:59');
+                conditions.push('timestamp_gps <= $' + idx);
+                params.push(tsHasta);
+                idx++;
+            }
+
+            // ORDER BY id ASC para que el trayecto se dibuje en orden cronológico
+            var where = ' WHERE ' + conditions.join(' AND ');
+            var sql = 'SELECT * FROM ubicaciones' + where + ' ORDER BY id ASC LIMIT 500';
+
+            console.log('[ZONA] SQL:', sql, '| Params:', params);
+            var result = await pool.query(sql, params);
+            res.json(result.rows);
+        } catch (err) {
+            console.error('[ZONA] Error:', err.message);
+            res.status(500).json({ error: err.message });
+        }
+    });
+
     app.get('/api/stats', async function(req, res) {
         try {
             const total = await pool.query('SELECT COUNT(*) as total FROM ubicaciones');
