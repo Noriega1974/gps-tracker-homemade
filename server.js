@@ -128,6 +128,10 @@ function iniciarUDP() {
 
         try {
             const id = await guardarUbicacion(data, rinfo.address);
+            if (id === null) {
+                console.warn('[UDP] Paquete recibido pero no almacenado (error DB). Broadcast omitido.');
+                return;
+            }
 
             const registro = {
                 id: id,
@@ -206,14 +210,14 @@ function iniciarWeb() {
 
             if (desde) {
                 var tsDesde = desde + ' ' + (horaDesde ? horaDesde + ':00' : '00:00:00');
-                conditions.push("timestamp_gps >= $" + idx);
+                conditions.push("timestamp_gps::timestamp >= $" + idx + "::timestamp");
                 params.push(tsDesde);
                 idx++;
             }
 
             if (hasta) {
                 var tsHasta = hasta + ' ' + (horaHasta ? horaHasta + ':00' : '23:59:59');
-                conditions.push("timestamp_gps <= $" + idx);
+                conditions.push("timestamp_gps::timestamp <= $" + idx + "::timestamp");
                 params.push(tsHasta);
                 idx++;
             }
@@ -226,6 +230,35 @@ function iniciarWeb() {
             res.json(result.rows);
         } catch (err) {
             console.error('[HIST] Error:', err.message);
+            res.status(500).json({ error: err.message });
+        }
+    });
+
+    // Filtro por zona geografica — devuelve registros dentro de un radio (metros) desde un punto dado
+    app.get('/api/zona', async function(req, res) {
+        try {
+            var lat   = parseFloat(req.query.lat);
+            var lon   = parseFloat(req.query.lon);
+            var radio = parseFloat(req.query.radio) || 200;
+
+            if (isNaN(lat) || isNaN(lon)) {
+                return res.status(400).json({ error: 'Coordenadas invalidas' });
+            }
+
+            // Haversine en SQL. LEAST(1.0,...) evita errores de dominio en acos por imprecision float.
+            var distExpr =
+                '(6371000 * acos(LEAST(1.0, ' +
+                '  cos(radians($1)) * cos(radians(latitud::float)) * ' +
+                '  cos(radians(longitud::float) - radians($2)) + ' +
+                '  sin(radians($1)) * sin(radians(latitud::float))' +
+                ')))';
+
+            var sql = 'SELECT * FROM ubicaciones WHERE ' + distExpr + ' <= $3 ORDER BY id ASC LIMIT 500';
+            console.log('[ZONA] SQL:', sql, '| Params:', [lat, lon, radio]);
+            var result = await pool.query(sql, [lat, lon, radio]);
+            res.json(result.rows);
+        } catch (err) {
+            console.error('[ZONA] Error:', err.message);
             res.status(500).json({ error: err.message });
         }
     });
