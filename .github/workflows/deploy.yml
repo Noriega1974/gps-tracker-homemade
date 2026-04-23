@@ -27,8 +27,7 @@ jobs:
             echo "INSTANCE_NAME=GPS-DEV-JOSE" >> .env
             echo 'UPLOAD_PASSWORD=${{ secrets.UPLOAD_PASSWORD }}' >> .env
             npm install
-            pm2 delete gps-dev 2>/dev/null || true
-            pm2 start /home/ubuntu/dev/server.js --name gps-dev
+            pm2 reload gps-dev 2>/dev/null || pm2 start /home/ubuntu/dev/server.js --name gps-dev
             pm2 save
 
   deploy-devdaniel:
@@ -53,8 +52,7 @@ jobs:
             echo "INSTANCE_NAME=GPS-DEV-DANIEL" >> .env
             echo 'UPLOAD_PASSWORD=${{ secrets.UPLOAD_PASSWORD }}' >> .env
             npm install
-            pm2 delete gps-dev 2>/dev/null || true
-            pm2 start /home/ubuntu/dev/server.js --name gps-dev
+            pm2 reload gps-dev 2>/dev/null || pm2 start /home/ubuntu/dev/server.js --name gps-dev
             pm2 save
 
   deploy-devpolo:
@@ -79,8 +77,7 @@ jobs:
             echo "INSTANCE_NAME=GPS-DEV-POLO" >> .env
             echo 'UPLOAD_PASSWORD=${{ secrets.UPLOAD_PASSWORD }}' >> .env
             npm install
-            pm2 delete gps-dev 2>/dev/null || true
-            pm2 start /home/ubuntu/dev/server.js --name gps-dev
+            pm2 reload gps-dev 2>/dev/null || pm2 start /home/ubuntu/dev/server.js --name gps-dev
             pm2 save
 
   deploy-devivan:
@@ -105,8 +102,7 @@ jobs:
             echo "INSTANCE_NAME=GPS-DEV-IVAN" >> .env
             echo 'UPLOAD_PASSWORD=${{ secrets.UPLOAD_PASSWORD }}' >> .env
             npm install
-            pm2 delete gps-dev 2>/dev/null || true
-            pm2 start /home/ubuntu/dev/server.js --name gps-dev
+            pm2 reload gps-dev 2>/dev/null || pm2 start /home/ubuntu/dev/server.js --name gps-dev
             pm2 save
 
   deploy-jose:
@@ -131,8 +127,7 @@ jobs:
             echo "INSTANCE_NAME=GPS-PROD-JOSE" >> .env
             echo 'UPLOAD_PASSWORD=${{ secrets.UPLOAD_PASSWORD }}' >> .env
             npm install
-            pm2 delete gps-tracker 2>/dev/null || true
-            pm2 start /home/ubuntu/gps/server.js --name gps-tracker
+            pm2 reload gps-tracker 2>/dev/null || pm2 start /home/ubuntu/gps/server.js --name gps-tracker
             pm2 save
 
   deploy-daniel:
@@ -157,8 +152,7 @@ jobs:
             echo "INSTANCE_NAME=GPS-PROD-DANIEL" >> .env
             echo 'UPLOAD_PASSWORD=${{ secrets.UPLOAD_PASSWORD }}' >> .env
             npm install
-            pm2 delete gps-tracker 2>/dev/null || true
-            pm2 start /home/ubuntu/gps/server.js --name gps-tracker
+            pm2 reload gps-tracker 2>/dev/null || pm2 start /home/ubuntu/gps/server.js --name gps-tracker
             pm2 save
 
   deploy-polo:
@@ -183,8 +177,7 @@ jobs:
             echo "INSTANCE_NAME=GPS-PROD-POLO" >> .env
             echo 'UPLOAD_PASSWORD=${{ secrets.UPLOAD_PASSWORD }}' >> .env
             npm install
-            pm2 delete gps-tracker 2>/dev/null || true
-            pm2 start /home/ubuntu/gps/server.js --name gps-tracker
+            pm2 reload gps-tracker 2>/dev/null || pm2 start /home/ubuntu/gps/server.js --name gps-tracker
             pm2 save
 
   deploy-ivan:
@@ -209,6 +202,5 @@ jobs:
             echo "INSTANCE_NAME=GPS-PROD-IVAN" >> .env
             echo 'UPLOAD_PASSWORD=${{ secrets.UPLOAD_PASSWORD }}' >> .env
             npm install
-            pm2 delete gps-tracker 2>/dev/null || true
-            pm2 start /home/ubuntu/gps/server.js --name gps-tracker
+            pm2 reload gps-tracker 2>/dev/null || pm2 start /home/ubuntu/gps/server.js --name gps-tracker
             pm2 save
