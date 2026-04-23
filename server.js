@@ -72,6 +72,9 @@ async function migrateDB() {
         await client.query('ALTER TABLE ubicaciones ADD COLUMN IF NOT EXISTS rpm NUMERIC');
         await client.query('ALTER TABLE ubicaciones ADD COLUMN IF NOT EXISTS combustible_usado NUMERIC');
         await client.query('ALTER TABLE ubicaciones ADD COLUMN IF NOT EXISTS combustible_hoy NUMERIC');
+        await client.query('ALTER TABLE ubicaciones ALTER COLUMN latitud DROP NOT NULL');
+        await client.query('ALTER TABLE ubicaciones ALTER COLUMN longitud DROP NOT NULL');
+        await client.query('ALTER TABLE ubicaciones ALTER COLUMN ip_origen DROP NOT NULL');
         const { rows } = await client.query(
             "SELECT 1 FROM information_schema.columns WHERE table_name='ubicaciones' AND column_name='protocolo'"
         );
@@ -307,8 +310,8 @@ function iniciarWeb() {
         for (const r of registros) {
             try {
                 await pool.query(
-                    'INSERT INTO ubicaciones (timestamp_gps, usuario, rpm, combustible_usado, combustible_hoy) VALUES ($1, $2, $3, $4, $5)',
-                    [r.timestamp, r.usuario, r.rpm, r.combustible_usado, r.combustible_hoy]
+                    'INSERT INTO ubicaciones (latitud, longitud, ip_origen, timestamp_gps, usuario, rpm, combustible_usado, combustible_hoy) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)',
+                    [null, null, null, r.timestamp, r.usuario, r.rpm, r.combustible_usado, r.combustible_hoy]
                 );
                 insertados++;
             } catch (err) {
