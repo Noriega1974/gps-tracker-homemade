@@ -27,7 +27,9 @@ jobs:
             echo "INSTANCE_NAME=GPS-DEV-JOSE" >> .env
             echo 'UPLOAD_PASSWORD=${{ secrets.UPLOAD_PASSWORD }}' >> .env
             npm install
-            /home/ubuntu/deploy-dev.sh
+            pm2 delete gps-dev 2>/dev/null || true
+            pm2 start /home/ubuntu/dev/server.js --name gps-dev
+            pm2 save
 
   deploy-devdaniel:
     if: github.ref == 'refs/heads/devdaniel'
@@ -51,7 +53,9 @@ jobs:
             echo "INSTANCE_NAME=GPS-DEV-DANIEL" >> .env
             echo 'UPLOAD_PASSWORD=${{ secrets.UPLOAD_PASSWORD }}' >> .env
             npm install
-            /home/ubuntu/deploy-devdaniel.sh
+            pm2 delete gps-dev 2>/dev/null || true
+            pm2 start /home/ubuntu/dev/server.js --name gps-dev
+            pm2 save
 
   deploy-devpolo:
     if: github.ref == 'refs/heads/devpolo'
@@ -75,7 +79,9 @@ jobs:
             echo "INSTANCE_NAME=GPS-DEV-POLO" >> .env
             echo 'UPLOAD_PASSWORD=${{ secrets.UPLOAD_PASSWORD }}' >> .env
             npm install
-            /home/ubuntu/deploy-devpolo.sh
+            pm2 delete gps-dev 2>/dev/null || true
+            pm2 start /home/ubuntu/dev/server.js --name gps-dev
+            pm2 save
 
   deploy-devivan:
     if: github.ref == 'refs/heads/devivan'
@@ -99,7 +105,9 @@ jobs:
             echo "INSTANCE_NAME=GPS-DEV-IVAN" >> .env
             echo 'UPLOAD_PASSWORD=${{ secrets.UPLOAD_PASSWORD }}' >> .env
             npm install
-            /home/ubuntu/deploy-devivan.sh
+            pm2 delete gps-dev 2>/dev/null || true
+            pm2 start /home/ubuntu/dev/server.js --name gps-dev
+            pm2 save
 
   deploy-jose:
     if: github.ref == 'refs/heads/main'
@@ -123,7 +131,9 @@ jobs:
             echo "INSTANCE_NAME=GPS-PROD-JOSE" >> .env
             echo 'UPLOAD_PASSWORD=${{ secrets.UPLOAD_PASSWORD }}' >> .env
             npm install
-            /home/ubuntu/deploy.sh
+            pm2 delete gps-tracker 2>/dev/null || true
+            pm2 start /home/ubuntu/gps/server.js --name gps-tracker
+            pm2 save
 
   deploy-daniel:
     if: github.ref == 'refs/heads/main'
@@ -147,7 +157,9 @@ jobs:
             echo "INSTANCE_NAME=GPS-PROD-DANIEL" >> .env
             echo 'UPLOAD_PASSWORD=${{ secrets.UPLOAD_PASSWORD }}' >> .env
             npm install
-            /home/ubuntu/deploy.sh
+            pm2 delete gps-tracker 2>/dev/null || true
+            pm2 start /home/ubuntu/gps/server.js --name gps-tracker
+            pm2 save
 
   deploy-polo:
     if: github.ref == 'refs/heads/main'
@@ -171,7 +183,9 @@ jobs:
             echo "INSTANCE_NAME=GPS-PROD-POLO" >> .env
             echo 'UPLOAD_PASSWORD=${{ secrets.UPLOAD_PASSWORD }}' >> .env
             npm install
-            /home/ubuntu/deploy.sh
+            pm2 delete gps-tracker 2>/dev/null || true
+            pm2 start /home/ubuntu/gps/server.js --name gps-tracker
+            pm2 save
 
   deploy-ivan:
     if: github.ref == 'refs/heads/main'
@@ -195,4 +209,6 @@ jobs:
             echo "INSTANCE_NAME=GPS-PROD-IVAN" >> .env
             echo 'UPLOAD_PASSWORD=${{ secrets.UPLOAD_PASSWORD }}' >> .env
             npm install
-            /home/ubuntu/deploy.sh
+            pm2 delete gps-tracker 2>/dev/null || true
+            pm2 start /home/ubuntu/gps/server.js --name gps-tracker
+            pm2 save
