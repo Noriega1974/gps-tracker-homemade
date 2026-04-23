@@ -25,6 +25,8 @@ jobs:
             echo 'DB_NAME=${{ secrets.DB_NAME }}' >> .env
             echo "DB_PORT=5432" >> .env
             echo "INSTANCE_NAME=GPS-DEV-JOSE" >> .env
+            echo "PORT=8081" >> .env
+            echo "UDP_PORT=5006" >> .env
             echo 'UPLOAD_PASSWORD=${{ secrets.UPLOAD_PASSWORD }}' >> .env
             npm install
             pm2 reload gps-dev 2>/dev/null || pm2 start /home/ubuntu/dev/server.js --name gps-dev
@@ -50,6 +52,8 @@ jobs:
             echo 'DB_NAME=${{ secrets.DB_NAME }}' >> .env
             echo "DB_PORT=5432" >> .env
             echo "INSTANCE_NAME=GPS-DEV-DANIEL" >> .env
+            echo "PORT=8081" >> .env
+            echo "UDP_PORT=5006" >> .env
             echo 'UPLOAD_PASSWORD=${{ secrets.UPLOAD_PASSWORD }}' >> .env
             npm install
             pm2 reload gps-dev 2>/dev/null || pm2 start /home/ubuntu/dev/server.js --name gps-dev
@@ -75,6 +79,8 @@ jobs:
             echo 'DB_NAME=${{ secrets.DB_NAME }}' >> .env
             echo "DB_PORT=5432" >> .env
             echo "INSTANCE_NAME=GPS-DEV-POLO" >> .env
+            echo "PORT=8081" >> .env
+            echo "UDP_PORT=5006" >> .env
             echo 'UPLOAD_PASSWORD=${{ secrets.UPLOAD_PASSWORD }}' >> .env
             npm install
             pm2 reload gps-dev 2>/dev/null || pm2 start /home/ubuntu/dev/server.js --name gps-dev
@@ -100,6 +106,8 @@ jobs:
             echo 'DB_NAME=${{ secrets.DB_NAME }}' >> .env
             echo "DB_PORT=5432" >> .env
             echo "INSTANCE_NAME=GPS-DEV-IVAN" >> .env
+            echo "PORT=8081" >> .env
+            echo "UDP_PORT=5006" >> .env
             echo 'UPLOAD_PASSWORD=${{ secrets.UPLOAD_PASSWORD }}' >> .env
             npm install
             pm2 reload gps-dev 2>/dev/null || pm2 start /home/ubuntu/dev/server.js --name gps-dev
