@@ -17,7 +17,8 @@ jobs:
           key: ${{ secrets.EC2_KEY }}
           script: |
             cd /home/ubuntu/dev
-            git pull origin dev
+            git fetch origin
+            git reset --hard origin/dev
             echo 'DB_HOST=${{ secrets.DB_HOST }}' > .env
             echo 'DB_USER=${{ secrets.DB_USER }}' >> .env
             echo 'DB_PASSWORD=${{ secrets.DB_PASSWORD }}' >> .env
@@ -40,7 +41,8 @@ jobs:
           key: ${{ secrets.EC2_KEY_DANIEL }}
           script: |
             cd /home/ubuntu/dev
-            git pull origin devdaniel
+            git fetch origin
+            git reset --hard origin/devdaniel
             echo 'DB_HOST=${{ secrets.DB_HOST }}' > .env
             echo 'DB_USER=${{ secrets.DB_USER }}' >> .env
             echo 'DB_PASSWORD=${{ secrets.DB_PASSWORD }}' >> .env
@@ -50,7 +52,7 @@ jobs:
             echo 'UPLOAD_PASSWORD=${{ secrets.UPLOAD_PASSWORD }}' >> .env
             npm install
             /home/ubuntu/deploy-devdaniel.sh
-  
+
   deploy-devpolo:
     if: github.ref == 'refs/heads/devpolo'
     runs-on: ubuntu-latest
@@ -63,7 +65,8 @@ jobs:
           key: ${{ secrets.EC2_KEY_POLO }}
           script: |
             cd /home/ubuntu/dev
-            git pull origin devpolo
+            git fetch origin
+            git reset --hard origin/devpolo
             echo 'DB_HOST=${{ secrets.DB_HOST }}' > .env
             echo 'DB_USER=${{ secrets.DB_USER }}' >> .env
             echo 'DB_PASSWORD=${{ secrets.DB_PASSWORD }}' >> .env
@@ -73,7 +76,7 @@ jobs:
             echo 'UPLOAD_PASSWORD=${{ secrets.UPLOAD_PASSWORD }}' >> .env
             npm install
             /home/ubuntu/deploy-devpolo.sh
-          
+
   deploy-devivan:
     if: github.ref == 'refs/heads/devivan'
     runs-on: ubuntu-latest
@@ -86,7 +89,8 @@ jobs:
           key: ${{ secrets.EC2_KEY_IVAN }}
           script: |
             cd /home/ubuntu/dev
-            git pull origin devivan
+            git fetch origin
+            git reset --hard origin/devivan
             echo 'DB_HOST=${{ secrets.DB_HOST }}' > .env
             echo 'DB_USER=${{ secrets.DB_USER }}' >> .env
             echo 'DB_PASSWORD=${{ secrets.DB_PASSWORD }}' >> .env
@@ -96,7 +100,7 @@ jobs:
             echo 'UPLOAD_PASSWORD=${{ secrets.UPLOAD_PASSWORD }}' >> .env
             npm install
             /home/ubuntu/deploy-devivan.sh
-        
+
   deploy-jose:
     if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
@@ -109,7 +113,8 @@ jobs:
           key: ${{ secrets.EC2_KEY }}
           script: |
             cd /home/ubuntu/gps
-            git pull origin main
+            git fetch origin
+            git reset --hard origin/main
             echo 'DB_HOST=${{ secrets.DB_HOST }}' > .env
             echo 'DB_USER=${{ secrets.DB_USER }}' >> .env
             echo 'DB_PASSWORD=${{ secrets.DB_PASSWORD }}' >> .env
@@ -132,7 +137,8 @@ jobs:
           key: ${{ secrets.EC2_KEY_DANIEL }}
           script: |
             cd /home/ubuntu/gps
-            git pull origin main
+            git fetch origin
+            git reset --hard origin/main
             echo 'DB_HOST=${{ secrets.DB_HOST }}' > .env
             echo 'DB_USER=${{ secrets.DB_USER }}' >> .env
             echo 'DB_PASSWORD=${{ secrets.DB_PASSWORD }}' >> .env
@@ -155,7 +161,8 @@ jobs:
           key: ${{ secrets.EC2_KEY_POLO }}
           script: |
             cd /home/ubuntu/gps
-            git pull origin main
+            git fetch origin
+            git reset --hard origin/main
             echo 'DB_HOST=${{ secrets.DB_HOST }}' > .env
             echo 'DB_USER=${{ secrets.DB_USER }}' >> .env
             echo 'DB_PASSWORD=${{ secrets.DB_PASSWORD }}' >> .env
@@ -178,7 +185,8 @@ jobs:
           key: ${{ secrets.EC2_KEY_IVAN }}
           script: |
             cd /home/ubuntu/gps
-            git pull origin main
+            git fetch origin
+            git reset --hard origin/main
             echo 'DB_HOST=${{ secrets.DB_HOST }}' > .env
             echo 'DB_USER=${{ secrets.DB_USER }}' >> .env
             echo 'DB_PASSWORD=${{ secrets.DB_PASSWORD }}' >> .env
