@@ -187,7 +187,9 @@ function iniciarWeb() {
             res.status(500).json({ error: err.message });
         }
     });
-
+    
+    // Filtro por zona geografica — devuelve los registros dentro de un radio (metros) desde un punto dado
+    // Params: lat, lon (centro), radio (metros), desde, hasta, horaDesde, horaHasta (opcionales)
     app.get('/api/zona', async function(req, res) {
         try {
             var lat      = parseFloat(req.query.lat);
