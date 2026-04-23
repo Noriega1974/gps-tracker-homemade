@@ -1,3 +1,4 @@
+require('dotenv').config();
 const dgram = require('dgram');
 const express = require('express');
 const http = require('http');
@@ -9,15 +10,24 @@ const os = require('os');
 const UDP_PORT = parseInt(process.env.UDP_PORT) || 5005;
 const WEB_PORT = parseInt(process.env.PORT) || 8080;
 
+// Validar variables críticas antes de arrancar
+const requiredEnv = ['DB_HOST', 'DB_USER', 'DB_PASSWORD', 'DB_NAME'];
+requiredEnv.forEach(variable => {
+    if (!process.env[variable]) {
+        console.error(`[FATAL] La variable de entorno ${variable} no está definida.`);
+        process.exit(1);
+    }
+});
+
 // =====================================================
-//  CONFIGURACION BASE DE DATOS — CAMBIA TU PASSWORD
+//  CONFIGURACION BASE DE DATOS — SEGURA
 // =====================================================
 const pool = new Pool({
-    host: 'database-1.culqegkq4tq5.us-east-1.rds.amazonaws.com',
-    user: 'postgres',
-    password: 'J50911711n-database',   // <-- cambia esto
-    database: 'gps_tracker',
-    port: 5432,
+    host: process.env.DB_HOST,
+    user: process.env.DB_USER,
+    password: process.env.DB_PASSWORD,
+    database: process.env.DB_NAME,
+    port: parseInt(process.env.DB_PORT) || 5432,
     ssl: { rejectUnauthorized: false }
 });
 let wss;
@@ -44,9 +54,14 @@ function timestamp() {
 }
 
 async function initDB() {
-    const client = await pool.connect();
-    console.log('[DB] Conectado a PostgreSQL RDS (gps_tracker)');
-    client.release();
+    try {
+        const client = await pool.connect();
+        console.log(`[DB] Conectado a PostgreSQL RDS (${process.env.DB_NAME})`);
+        client.release();
+    } catch (err) {
+        console.error('[DB] Error de conexión:', err.message);
+        throw err; // Detener el arranque si no hay base de datos
+    }
 }
 
 async function guardarUbicacion(data, ipOrigen) {
@@ -73,9 +88,26 @@ function broadcast(data) {
 
 function parsearDatos(raw) {
     try {
-        return JSON.parse(raw.toString('utf8').trim());
+        const payload = JSON.parse(raw.toString('utf8').trim());
+        
+        // Validacion estricta de esquema
+        const lat = parseFloat(payload.lat);
+        const lon = parseFloat(payload.lon);
+        const time = payload.time;
+
+        if (isNaN(lat) || isNaN(lon) || !time) {
+            console.warn('[PARSE] Datos incompletos o invalidos:', payload);
+            return null;
+        }
+
+        // Retornamos un objeto limpio con tipos de datos correctos
+        return {
+            lat: lat,
+            lon: lon,
+            time: String(time).trim()
+        };
     } catch (e) {
-        console.error('[PARSE] JSON invalido:', raw.toString('utf8').substring(0, 200));
+        console.error('[PARSE] Error al procesar paquete:', e.message);
         return null;
     }
 }
@@ -85,15 +117,19 @@ function iniciarUDP() {
 
     server.on('message', async function(msg, rinfo) {
         const data = parsearDatos(msg);
-        if (data) {
-            packetCount++;
-            console.log('\n[' + timestamp() + '] UDP #' + packetCount + ' de ' + rinfo.address + ':' + rinfo.port);
-            console.log('  Lat: ' + data.lat + ', Lon: ' + data.lon + ', Time: ' + data.time);
-            console.log('  Bytes: ' + msg.length);
+        
+        // Solo procedemos si el dato es valido y paso el filtro de esquema
+        if (!data) return;
 
+        packetCount++;
+        console.log(`\n[${timestamp()}] UDP #${packetCount} de ${rinfo.address}:${rinfo.port}`);
+        console.log(`  Lat: ${data.lat}, Lon: ${data.lon}, Time: ${data.time}`);
+        console.log(`  Bytes: ${msg.length}`);
+
+        try {
             const id = await guardarUbicacion(data, rinfo.address);
 
-            var registro = {
+            const registro = {
                 id: id,
                 latitud: data.lat,
                 longitud: data.lon,
@@ -106,7 +142,10 @@ function iniciarUDP() {
                 longitud_bytes: msg.length,
                 fecha_recepcion: new Date().toISOString()
             };
+            
             broadcast(registro);
+        } catch (err) {
+            console.error('[UDP] Error en el flujo de procesamiento:', err.message);
         }
     });
 
@@ -127,14 +166,17 @@ function iniciarWeb() {
 
     const fs = require('fs');
     const instanceName = process.env.INSTANCE_NAME || 'GPS Tracker';
+    // Extraemos el ID del nombre (ej: "GPS-DEV-JOSE" -> "jose") asegurando limpieza
+    const currentId = instanceName.toLowerCase().trim().split('-').pop();
+
+    // Leer y procesar el HTML una sola vez al arrancar — no en cada request
+    const cachedHtml = fs.readFileSync(path.join(__dirname, 'index.html'), 'utf8')
+        .replace(/{{INSTANCE_NAME}}/g, instanceName)
+        .replace(/{{CURRENT_ID}}/g, currentId);
 
     app.get('/', function(req, res) {
-        const html = fs.readFileSync(path.join(__dirname, 'public/index.html'), 'utf8')
-            .replace('{{INSTANCE_NAME}}', instanceName);
-        res.send(html);
+        res.send(cachedHtml);
     });
-
-    app.use(express.static(path.join(__dirname, 'public')));
 
     // Ultimo punto (para real-time al cargar)
     app.get('/api/ubicaciones', async function(req, res) {
@@ -246,20 +288,41 @@ function iniciarWeb() {
 
     app.get('/api/stats', async function(req, res) {
         try {
-            const total = await pool.query('SELECT COUNT(*) as total FROM ubicaciones');
-            const byProto = await pool.query('SELECT protocolo, COUNT(*) as total FROM ubicaciones GROUP BY protocolo');
-            const ultima = await pool.query('SELECT * FROM ubicaciones ORDER BY id DESC LIMIT 1');
+            const [totalRes, byProtoRes, ultimaRes] = await Promise.all([
+                pool.query('SELECT COUNT(*) as total FROM ubicaciones'),
+                pool.query('SELECT protocolo, COUNT(*) as total FROM ubicaciones GROUP BY protocolo'),
+                pool.query('SELECT * FROM ubicaciones ORDER BY id DESC LIMIT 1')
+            ]);
             res.json({
-                total: total.rows[0].total,
-                por_protocolo: byProto.rows,
-                ultima_ubicacion: ultima.rows[0] || null
+                total: totalRes.rows[0].total,
+                por_protocolo: byProtoRes.rows,
+                ultima_ubicacion: ultimaRes.rows[0] || null
             });
         } catch (err) {
             res.status(500).json({ error: err.message });
         }
     });
 
+    // Heartbeat: detectar y limpiar sockets muertos cada 30 segundos
+    const heartbeatInterval = setInterval(function() {
+        wss.clients.forEach(function(ws) {
+            if (ws.isAlive === false) {
+                console.log('[WS] Terminando socket sin respuesta (heartbeat timeout)');
+                return ws.terminate();
+            }
+            ws.isAlive = false;
+            ws.ping();
+        });
+    }, 30000);
+
+    wss.on('close', function() {
+        clearInterval(heartbeatInterval);
+    });
+
     wss.on('connection', function(ws, req) {
+        ws.isAlive = true;
+        ws.on('pong', function() { ws.isAlive = true; });
+
         var clientIP = req.socket.remoteAddress;
         console.log('[WS] Cliente web conectado desde ' + clientIP);
 
@@ -274,7 +337,7 @@ function iniciarWeb() {
     });
 
     server.listen(WEB_PORT, '0.0.0.0', function() {
-        console.log('[WEB] http://gpstracker3.ddns.net:' + WEB_PORT);
+        console.log('[WEB] Escuchando en http://' + serverIP + ':' + WEB_PORT + ' (' + (process.env.INSTANCE_NAME || 'sin nombre') + ')');
     });
 }
 
