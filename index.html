@@ -48,7 +48,7 @@
         .card-title{font-size:13px;font-weight:600;color:var(--txt2);text-transform:uppercase;letter-spacing:1px;margin-bottom:14px;display:flex;align-items:center;gap:8px;}
         .card-title::before{content:'';width:3px;height:16px;border-radius:2px;background:var(--accent);}
         .map-wrap{max-width:900px;margin:0 auto;}
-        #mapa,#mapaHist{
+        #mapa,#mapaHist,#mapaZona{
         width:100%;
         height:480px;
         border-radius:12px;
@@ -95,7 +95,13 @@
         @keyframes spin{from{transform:rotate(0deg);}to{transform:rotate(360deg);}}
         [data-theme="dark"] .leaflet-tile-pane{filter:brightness(0.7) contrast(1.1) saturate(0.8);}
         [data-theme="dark"] .leaflet-control-zoom a{background:var(--bg2)!important;color:var(--txt1)!important;border-color:var(--brd)!important;}
-        @media(max-width:768px){.sidebar{transform:translateX(calc(-1 * var(--sidebar-w)));}.sidebar.open{transform:translateX(0);}.hamburger{display:flex;}.main{margin-left:0;padding:70px 16px 24px;}.gps-grid{grid-template-columns:1fr;}#mapa,#mapaHist{height:300px;}}
+        @media(max-width:768px){.sidebar{transform:translateX(calc(-1 * var(--sidebar-w)));}.sidebar.open{transform:translateX(0);}.hamburger{display:flex;}.main{margin-left:0;padding:70px 16px 24px;}.gps-grid{grid-template-columns:1fr;}#mapa,#mapaHist,#mapaZona{height:300px;}}
+        .zona-hint{display:flex;align-items:center;gap:10px;padding:11px 16px;background:var(--accent-lt);border-radius:10px;font-size:13px;color:var(--accent);font-weight:500;margin-bottom:16px;}
+        .zona-hint svg{flex-shrink:0;}
+        .radio-row{display:flex;align-items:center;gap:14px;margin-bottom:16px;flex-wrap:wrap;}
+        .radio-row label{font-size:13px;font-weight:500;color:var(--txt2);}
+        .radio-row input[type="range"]{flex:1;min-width:140px;accent-color:var(--accent);cursor:pointer;}
+        .radio-val{font-family:'JetBrains Mono',monospace;font-size:14px;font-weight:600;color:var(--accent);min-width:70px;text-align:right;}
         .sidebar {
         z-index: 9999 !important;
         }
@@ -117,6 +123,7 @@
         <div class="side-section-title">Vistas</div>
         <div class="side-item active" onclick="showView('realtime',this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>Real-Time</div>
         <div class="side-item" onclick="showView('historical',this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 3v18h18"/><polyline points="18 9 12 15 9 12 3 18"/></svg>Historical View</div>
+        <div class="side-item" onclick="showView('zona',this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="3"/><line x1="12" y1="2" x2="12" y2="9"/><line x1="12" y1="15" x2="12" y2="22"/><line x1="2" y1="12" x2="9" y2="12"/><line x1="15" y1="12" x2="22" y2="12"/></svg>Filtro por Zona</div>
     </div>
     <div class="side-section">
         <div class="side-section-title">Rastreadores</div>
@@ -179,6 +186,45 @@
             </div>
         </div>
     </div>
+    <!-- ── Vista Filtro por Zona ────────────────────────────── -->
+    <div class="view" id="view-zona">
+        <div class="view-title">Filtro por Zona</div>
+        <div class="card">
+            <div class="card-title">Configurar Zona</div>
+            <div class="zona-hint">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" width="18" height="18"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="3"/><line x1="12" y1="2" x2="12" y2="9"/><line x1="12" y1="15" x2="12" y2="22"/><line x1="2" y1="12" x2="9" y2="12"/><line x1="15" y1="12" x2="22" y2="12"/></svg>
+                Haz clic en el mapa para colocar el centro de la zona de búsqueda
+            </div>
+            <div class="gps-grid" style="margin-bottom:16px;">
+                <div class="gps-item"><span class="gps-item-label">Latitud centro</span><span class="gps-item-value" id="zonaLat">---</span></div>
+                <div class="gps-item"><span class="gps-item-label">Longitud centro</span><span class="gps-item-value" id="zonaLon">---</span></div>
+            </div>
+            <div class="radio-row">
+                <label>Radio de búsqueda:</label>
+                <input type="range" id="zonaRadio" min="50" max="10000" step="50" value="200" oninput="onZonaRadioChange()">
+                <span class="radio-val" id="zonaRadioLabel">200 m</span>
+            </div>
+            <div class="loading-msg" id="zonaLoading">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" width="18" height="18"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>
+                <span>Consultando registros...</span>
+            </div>
+            <div class="filter-bar">
+                <button class="filter-btn" id="btnFiltrarZona" onclick="filtrarZona()" disabled>Buscar en toda la historia</button>
+                <button class="filter-btn secondary" onclick="limpiarZona()">Limpiar</button>
+            </div>
+            <p class="pkt-count" id="zonaCount">Haz clic en el mapa para definir el centro de la zona</p>
+        </div>
+        <div class="card map-wrap" style="padding:0;overflow:hidden;"><div id="mapaZona"></div></div>
+        <div class="card">
+            <div class="card-title" style="cursor:pointer;user-select:none;" onclick="toggleZonaTable()">
+                Registros encontrados en Zona
+                <svg id="zonaToggleIcon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" width="16" height="16" style="margin-left:auto;transition:transform 0.3s;transform:rotate(-90deg);"><polyline points="6 9 12 15 18 9"/></svg>
+            </div>
+            <div id="zonaTableWrap" style="display:none;">
+                <div class="table-wrap"><table><thead><tr><th>No.</th><th>Fecha</th><th>Hora (COL)</th><th>Latitud</th><th>Longitud</th></tr></thead><tbody id="zonaBody"></tbody></table></div>
+            </div>
+        </div>
+    </div>
 </div>
 
 <script>
@@ -191,6 +237,8 @@ function setTheme(t){
     icon.innerHTML=t==='dark'?'<path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>':'<circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>';
     if(rutaPolyline)rutaPolyline.setStyle({color:getCS('--route')});
     if(rutaHistPolyline)rutaHistPolyline.setStyle({color:getCS('--route')});
+    if(zonaPolyline)zonaPolyline.setStyle({color:getCS('--marker')});
+    if(zonaCircle)zonaCircle.setStyle({color:getCS('--accent'),fillColor:getCS('--accent')});
 }
 function toggleTheme(){setTheme(currentTheme==='light'?'dark':'light');}
 function getCS(v){return getComputedStyle(document.documentElement).getPropertyValue(v).trim();}
@@ -212,8 +260,23 @@ function showView(name,el){
             mapaHistInit=true;
         },150);
     }
+    if(name==='zona'&&!mapaZonaInit){
+        setTimeout(function(){
+            mapaZona=L.map('mapaZona').setView(ultimoPunto||[10.9685,-74.7813],13);
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{attribution:'&copy; OpenStreetMap'}).addTo(mapaZona);
+            zonaPolyline=L.polyline([],{color:getCS('--marker'),weight:5}).addTo(mapaZona);
+            mapaZona.on('click',function(e){
+                zonaCenter=[e.latlng.lat,e.latlng.lng];
+                actualizarZonaVisual();
+                actualizarCoordZona();
+                checkZonaLista();
+            });
+            mapaZonaInit=true;
+        },150);
+    }
     if(name==='realtime')setTimeout(function(){mapa.invalidateSize();},150);
     if(name==='historical'&&mapaHist)setTimeout(function(){mapaHist.invalidateSize();},150);
+    if(name==='zona'&&mapaZona)setTimeout(function(){mapaZona.invalidateSize();},150);
 }
 
 var mapa=L.map('mapa').setView([10.9685,-74.7813],13);
@@ -228,6 +291,7 @@ L.Icon.Default.mergeOptions({
 });
 
 var marcador=null,rutaPolyline=L.polyline([],{color:getCS('--route'),weight:5}).addTo(mapa),ultimoPunto=null;
+var osrmSeq=0;
 
 // Base path para que las rutas API funcionen tanto en / como en /dev/, /devdaniel/, etc.
 var basePath = (function(){
@@ -284,14 +348,13 @@ function actualizarMapa(lat,lon){
     window.rtCircles.push(c);
     if(ultimoPunto){
         var prevPunto=ultimoPunto;
-        // Dibujar linea recta inmediata para que no haya delay visual
         var ptsAntes=rutaPolyline.getLatLngs().length;
+        var mySeq=++osrmSeq;
         var pts=rutaPolyline.getLatLngs();
         pts.push(prevPunto);pts.push(p);
         rutaPolyline.setLatLngs(pts);
-        // Luego reemplazar con ruta OSRM cuando llegue
         obtenerRutaOSRM(prevPunto,p,function(coords){
-            // Quitar la linea recta temporal y poner la ruta real
+            if(mySeq!==osrmSeq) return;
             var allPts=rutaPolyline.getLatLngs();
             var base=allPts.slice(0,ptsAntes);
             coords.forEach(function(c){base.push(c);});
@@ -530,7 +593,15 @@ function renderHistorico(datos){
     else mapaHist.setView(last,15);
 
     if(puntosRuta.length>=2){
-        var coords=puntosRuta.map(function(p){return p[1].toFixed(6)+','+p[0].toFixed(6);}).join(';');
+        var muestreo=puntosRuta;
+        if(muestreo.length>100){
+            var paso=Math.ceil(muestreo.length/99);
+            var reducido=[muestreo[0]];
+            for(var i=paso;i<muestreo.length-1;i+=paso) reducido.push(muestreo[i]);
+            reducido.push(muestreo[muestreo.length-1]);
+            muestreo=reducido;
+        }
+        var coords=muestreo.map(function(p){return p[1].toFixed(6)+','+p[0].toFixed(6);}).join(';');
         var url='https://router.project-osrm.org/route/v1/driving/'+coords+'?overview=full&geometries=geojson';
         console.log('[HIST] OSRM: '+puntosRuta.length+' waypoints, URL: '+url.length+' chars');
         fetch(url).then(function(r){
@@ -616,6 +687,115 @@ function toggleHistTable(){
         }
     });
 })();
+
+/* ═══════════════════════════════════════════════════════
+   FILTRO POR ZONA
+   ═══════════════════════════════════════════════════════ */
+var mapaZonaInit=false,mapaZona,zonaPolyline=null;
+var zonaMarcador=null,zonaCircle=null,zonaCenter=null;
+window.zonaCircles=[];
+
+function toggleZonaTable(){
+    var wrap=document.getElementById('zonaTableWrap');
+    var icon=document.getElementById('zonaToggleIcon');
+    if(wrap.style.display==='none'){wrap.style.display='block';icon.style.transform='rotate(0deg)';}
+    else{wrap.style.display='none';icon.style.transform='rotate(-90deg)';}
+}
+
+function actualizarZonaVisual(){
+    if(!zonaCenter||!mapaZona) return;
+    var radio=parseInt(document.getElementById('zonaRadio').value)||200;
+    var ac=getCS('--accent');
+    if(zonaMarcador){mapaZona.removeLayer(zonaMarcador);}
+    if(zonaCircle){mapaZona.removeLayer(zonaCircle);}
+    zonaMarcador=L.marker(zonaCenter).addTo(mapaZona);
+    zonaCircle=L.circle(zonaCenter,{radius:radio,color:ac,fillColor:ac,fillOpacity:0.12,weight:2,dashArray:'6,5'}).addTo(mapaZona);
+}
+
+function actualizarCoordZona(){
+    if(!zonaCenter) return;
+    document.getElementById('zonaLat').textContent=zonaCenter[0].toFixed(6);
+    document.getElementById('zonaLon').textContent=zonaCenter[1].toFixed(6);
+}
+
+function checkZonaLista(){
+    document.getElementById('btnFiltrarZona').disabled=(zonaCenter===null);
+}
+
+function onZonaRadioChange(){
+    var val=parseInt(document.getElementById('zonaRadio').value)||200;
+    document.getElementById('zonaRadioLabel').textContent=val+' m';
+    actualizarZonaVisual();
+}
+
+function filtrarZona(){
+    if(!zonaCenter) return;
+    var radio=parseInt(document.getElementById('zonaRadio').value)||200;
+    var url=basePath+'api/zona?lat='+zonaCenter[0]+'&lon='+zonaCenter[1]+'&radio='+radio;
+    document.getElementById('zonaLoading').classList.add('show');
+    document.getElementById('zonaCount').textContent='Consultando...';
+    fetch(url).then(function(r){return r.json();}).then(function(data){
+        document.getElementById('zonaLoading').classList.remove('show');
+        if(Array.isArray(data)){renderZona(data);}
+        else{document.getElementById('zonaCount').textContent='Error al consultar registros';}
+    }).catch(function(err){
+        document.getElementById('zonaLoading').classList.remove('show');
+        document.getElementById('zonaCount').textContent='Error de conexion';
+        console.error('[ZONA] Fetch error:',err);
+    });
+}
+
+function renderZona(datos){
+    var tbody=document.getElementById('zonaBody');
+    tbody.innerHTML='';
+    if(window.zonaCircles){window.zonaCircles.forEach(function(c){mapaZona.removeLayer(c);});}
+    window.zonaCircles=[];
+    if(zonaPolyline) zonaPolyline.setLatLngs([]);
+    document.getElementById('zonaCount').textContent='Puntos encontrados: '+datos.length;
+    if(datos.length===0) return;
+    var routeColor=getCS('--marker');
+    var todosPuntos=[];
+    for(var i=0;i<datos.length;i++){
+        (function(d,idx){
+            var fh=extraerFechaHora(d.timestamp_gps||d.fecha_recepcion);
+            var p=[parseFloat(d.latitud),parseFloat(d.longitud)];
+            todosPuntos.push(p);
+            var c=L.circleMarker(p,{radius:5,color:routeColor,fillColor:routeColor,fillOpacity:0.85,weight:2}).addTo(mapaZona);
+            c.bindPopup('<strong>Visto el:</strong><br>'+fh.fecha+'<br>'+fh.hora);
+            window.zonaCircles.push(c);
+            var row=document.createElement('tr');
+            row.innerHTML='<td>'+(idx+1)+'</td><td>'+fh.fecha+'</td><td>'+fh.hora+'</td><td>'+d.latitud+'</td><td>'+d.longitud+'</td>';
+            row.style.cursor='pointer';
+            row.onclick=function(){
+                var prev=tbody.querySelector('.selected');if(prev)prev.classList.remove('selected');
+                this.classList.add('selected');
+                mapaZona.setView(p,17);
+                c.openPopup();
+            };
+            tbody.appendChild(row);
+        })(datos[i],i);
+    }
+    if(todosPuntos.length>0){
+        var bounds=L.latLngBounds(todosPuntos);
+        if(zonaCircle) bounds.extend(zonaCircle.getBounds());
+        mapaZona.fitBounds(bounds,{padding:[40,40]});
+    }
+}
+
+function limpiarZona(){
+    if(zonaMarcador&&mapaZona){mapaZona.removeLayer(zonaMarcador);zonaMarcador=null;}
+    if(zonaCircle&&mapaZona){mapaZona.removeLayer(zonaCircle);zonaCircle=null;}
+    if(window.zonaCircles){window.zonaCircles.forEach(function(c){mapaZona.removeLayer(c);});window.zonaCircles=[];}
+    if(zonaPolyline) zonaPolyline.setLatLngs([]);
+    zonaCenter=null;
+    document.getElementById('zonaLat').textContent='---';
+    document.getElementById('zonaLon').textContent='---';
+    document.getElementById('zonaRadio').value=200;
+    document.getElementById('zonaRadioLabel').textContent='200 m';
+    document.getElementById('zonaBody').innerHTML='';
+    document.getElementById('zonaCount').textContent='Haz clic en el mapa para definir el centro';
+    checkZonaLista();
+}
 
 conectarWS();
 </script>
