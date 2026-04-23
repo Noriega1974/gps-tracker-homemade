@@ -6,6 +6,7 @@ const WebSocket = require('ws');
 const { Pool } = require('pg');
 const path = require('path');
 const os = require('os');
+const crypto = require('crypto');
 
 const UDP_PORT = parseInt(process.env.UDP_PORT) || 5005;
 const WEB_PORT = parseInt(process.env.PORT) || 8080;
@@ -60,14 +61,36 @@ async function initDB() {
         client.release();
     } catch (err) {
         console.error('[DB] Error de conexión:', err.message);
-        throw err; // Detener el arranque si no hay base de datos
+        throw err;
+    }
+}
+
+async function migrateDB() {
+    const client = await pool.connect();
+    try {
+        await client.query('ALTER TABLE ubicaciones ADD COLUMN IF NOT EXISTS usuario TEXT');
+        await client.query('ALTER TABLE ubicaciones ADD COLUMN IF NOT EXISTS rpm NUMERIC');
+        await client.query('ALTER TABLE ubicaciones ADD COLUMN IF NOT EXISTS combustible_usado NUMERIC');
+        await client.query('ALTER TABLE ubicaciones ADD COLUMN IF NOT EXISTS combustible_hoy NUMERIC');
+        const { rows } = await client.query(
+            "SELECT 1 FROM information_schema.columns WHERE table_name='ubicaciones' AND column_name='protocolo'"
+        );
+        if (rows.length > 0) {
+            await client.query('ALTER TABLE ubicaciones DROP COLUMN protocolo');
+            console.log('[DB] Columna protocolo eliminada');
+        }
+        console.log('[DB] Migracion OK');
+    } catch (err) {
+        console.error('[DB] Error en migracion:', err.message);
+    } finally {
+        client.release();
     }
 }
 
 async function guardarUbicacion(data, ipOrigen) {
     try {
-        const sql = 'INSERT INTO ubicaciones (latitud, longitud, timestamp_gps, protocolo, ip_origen) VALUES ($1, $2, $3, $4, $5) RETURNING id';
-        const valores = [data.lat, data.lon, data.time, 'UDP', ipOrigen];
+        const sql = 'INSERT INTO ubicaciones (latitud, longitud, timestamp_gps, ip_origen) VALUES ($1, $2, $3, $4) RETURNING id';
+        const valores = [data.lat, data.lon, data.time, ipOrigen];
         const result = await pool.query(sql, valores);
         return result.rows[0].id;
     } catch (err) {
@@ -128,6 +151,10 @@ function iniciarUDP() {
 
         try {
             const id = await guardarUbicacion(data, rinfo.address);
+            if (id === null) {
+                console.warn('[UDP] Paquete recibido pero no almacenado (error DB). Broadcast omitido.');
+                return;
+            }
 
             const registro = {
                 id: id,
@@ -178,6 +205,121 @@ function iniciarWeb() {
         res.send(cachedHtml);
     });
 
+    // ── Auth ─────────────────────────────────────────────────────────
+    const UPLOAD_SECRET = process.env.UPLOAD_PASSWORD || '';
+
+    function generarToken(usuario) {
+        const ts = Date.now();
+        const sig = crypto.createHmac('sha256', UPLOAD_SECRET).update(usuario + ts).digest('hex');
+        return Buffer.from(JSON.stringify({ usuario, ts, sig })).toString('base64url');
+    }
+
+    function verificarToken(token) {
+        try {
+            const { usuario, ts, sig } = JSON.parse(Buffer.from(token, 'base64url').toString());
+            const expected = crypto.createHmac('sha256', UPLOAD_SECRET).update(usuario + ts).digest('hex');
+            return sig === expected && (Date.now() - ts) < 86400000 ? usuario : null;
+        } catch { return null; }
+    }
+
+    function autenticar(req, res, next) {
+        const auth = req.headers['authorization'] || '';
+        const token = auth.startsWith('Bearer ') ? auth.slice(7) : null;
+        const usuario = token ? verificarToken(token) : null;
+        if (!usuario) return res.status(401).json({ error: 'No autorizado' });
+        req.usuario = usuario;
+        next();
+    }
+
+    app.post('/api/login', express.json({ limit: '1mb' }), function(req, res) {
+        if (!UPLOAD_SECRET) return res.status(503).json({ error: 'UPLOAD_PASSWORD no configurado en el servidor' });
+        const { password, usuario } = req.body || {};
+        if (!password || password !== UPLOAD_SECRET)
+            return res.status(401).json({ error: 'Contraseña incorrecta' });
+        if (!usuario || !usuario.trim())
+            return res.status(400).json({ error: 'Nombre de usuario requerido' });
+        res.json({ token: generarToken(usuario.trim()), usuario: usuario.trim() });
+    });
+
+    // ── CSV Parser ────────────────────────────────────────────────────
+    function parsearLineaCSV(line) {
+        const cols = []; let cur = ''; let inQ = false;
+        for (const ch of line) {
+            if (ch === '"') { inQ = !inQ; }
+            else if (ch === ',' && !inQ) { cols.push(cur); cur = ''; }
+            else cur += ch;
+        }
+        cols.push(cur);
+        return cols;
+    }
+
+    function parsearCSVReporte(csvText, usuario, fecha) {
+        const lines = csvText.split('\n').filter(l => l.trim());
+        if (lines.length < 2) return [];
+
+        const header = parsearLineaCSV(lines[0]);
+        const idxRpm  = header.findIndex(h => h.replace(/"/g,'').trim().startsWith('Revoluciones del motor (rpm)'));
+        const idxComb = header.findIndex(h => h.replace(/"/g,'').trim() === 'Combustible usado (L)');
+        const idxHoy  = header.findIndex(h => h.replace(/"/g,'').trim().startsWith('Combustible usado (Hoy)'));
+
+        if (idxRpm === -1 || idxComb === -1 || idxHoy === -1) return [];
+
+        const registros = [];
+        let lastComb = null, lastHoy = null;
+
+        for (let i = 1; i < lines.length; i++) {
+            const cols = lines[i].split(',');
+            const time = (cols[0] || '').trim();
+            if (!time) continue;
+
+            const rpm  = parseFloat(cols[idxRpm]);
+            const comb = parseFloat(cols[idxComb]);
+            const hoy  = parseFloat(cols[idxHoy]);
+
+            if (!isNaN(comb)) lastComb = comb;
+            if (!isNaN(hoy))  lastHoy  = hoy;
+
+            if (!isNaN(rpm) && lastComb !== null) {
+                registros.push({
+                    timestamp: fecha + ' ' + time,
+                    usuario,
+                    rpm,
+                    combustible_usado: lastComb,
+                    combustible_hoy:   lastHoy
+                });
+            }
+        }
+        return registros;
+    }
+
+    app.post('/api/upload-reporte', express.text({ type: '*/*', limit: '10mb' }), autenticar, async function(req, res) {
+        const csvText = req.body;
+        const fecha = (req.headers['x-fecha'] || new Date().toISOString().split('T')[0]);
+
+        if (!csvText || typeof csvText !== 'string')
+            return res.status(400).json({ error: 'CSV vacio o invalido' });
+
+        const registros = parsearCSVReporte(csvText, req.usuario, fecha);
+        if (registros.length === 0)
+            return res.status(400).json({ error: 'No se encontraron columnas RPM/combustible en el CSV' });
+
+        let insertados = 0;
+        for (const r of registros) {
+            try {
+                await pool.query(
+                    'INSERT INTO ubicaciones (timestamp_gps, usuario, rpm, combustible_usado, combustible_hoy) VALUES ($1, $2, $3, $4, $5)',
+                    [r.timestamp, r.usuario, r.rpm, r.combustible_usado, r.combustible_hoy]
+                );
+                insertados++;
+            } catch (err) {
+                console.error('[UPLOAD] Error insertando:', err.message);
+            }
+        }
+
+        console.log(`[UPLOAD] ${req.usuario} subio ${insertados}/${registros.length} registros (${fecha})`);
+        res.json({ ok: true, insertados, total: registros.length });
+    });
+
     // Ultimo punto (para real-time al cargar)
     app.get('/api/ubicaciones', async function(req, res) {
         try {
@@ -206,14 +348,14 @@ function iniciarWeb() {
 
             if (desde) {
                 var tsDesde = desde + ' ' + (horaDesde ? horaDesde + ':00' : '00:00:00');
-                conditions.push("timestamp_gps >= $" + idx);
+                conditions.push("timestamp_gps::timestamp >= $" + idx + "::timestamp");
                 params.push(tsDesde);
                 idx++;
             }
 
             if (hasta) {
                 var tsHasta = hasta + ' ' + (horaHasta ? horaHasta + ':00' : '23:59:59');
-                conditions.push("timestamp_gps <= $" + idx);
+                conditions.push("timestamp_gps::timestamp <= $" + idx + "::timestamp");
                 params.push(tsHasta);
                 idx++;
             }
@@ -226,6 +368,35 @@ function iniciarWeb() {
             res.json(result.rows);
         } catch (err) {
             console.error('[HIST] Error:', err.message);
+            res.status(500).json({ error: err.message });
+        }
+    });
+
+    // Filtro por zona geografica — devuelve registros dentro de un radio (metros) desde un punto dado
+    app.get('/api/zona', async function(req, res) {
+        try {
+            var lat   = parseFloat(req.query.lat);
+            var lon   = parseFloat(req.query.lon);
+            var radio = parseFloat(req.query.radio) || 200;
+
+            if (isNaN(lat) || isNaN(lon)) {
+                return res.status(400).json({ error: 'Coordenadas invalidas' });
+            }
+
+            // Haversine en SQL. LEAST(1.0,...) evita errores de dominio en acos por imprecision float.
+            var distExpr =
+                '(6371000 * acos(LEAST(1.0, ' +
+                '  cos(radians($1)) * cos(radians(latitud::float)) * ' +
+                '  cos(radians(longitud::float) - radians($2)) + ' +
+                '  sin(radians($1)) * sin(radians(latitud::float))' +
+                ')))';
+
+            var sql = 'SELECT * FROM ubicaciones WHERE ' + distExpr + ' <= $3 ORDER BY id ASC LIMIT 500';
+            console.log('[ZONA] SQL:', sql, '| Params:', [lat, lon, radio]);
+            var result = await pool.query(sql, [lat, lon, radio]);
+            res.json(result.rows);
+        } catch (err) {
+            console.error('[ZONA] Error:', err.message);
             res.status(500).json({ error: err.message });
         }
     });
@@ -294,6 +465,7 @@ async function main() {
     console.log('');
 
     await initDB();
+    await migrateDB();
     iniciarUDP();
     iniciarWeb();
 
