@@ -17,6 +17,7 @@ jobs:
           key: ${{ secrets.EC2_KEY }}
           script: |
             cd /home/ubuntu/dev
+            git pull origin dev
             echo 'DB_HOST=${{ secrets.DB_HOST }}' > .env
             echo 'DB_USER=${{ secrets.DB_USER }}' >> .env
             echo 'DB_PASSWORD=${{ secrets.DB_PASSWORD }}' >> .env
@@ -39,6 +40,7 @@ jobs:
           key: ${{ secrets.EC2_KEY_DANIEL }}
           script: |
             cd /home/ubuntu/dev
+            git pull origin devdaniel
             echo 'DB_HOST=${{ secrets.DB_HOST }}' > .env
             echo 'DB_USER=${{ secrets.DB_USER }}' >> .env
             echo 'DB_PASSWORD=${{ secrets.DB_PASSWORD }}' >> .env
@@ -61,6 +63,7 @@ jobs:
           key: ${{ secrets.EC2_KEY_POLO }}
           script: |
             cd /home/ubuntu/dev
+            git pull origin devpolo
             echo 'DB_HOST=${{ secrets.DB_HOST }}' > .env
             echo 'DB_USER=${{ secrets.DB_USER }}' >> .env
             echo 'DB_PASSWORD=${{ secrets.DB_PASSWORD }}' >> .env
@@ -83,6 +86,7 @@ jobs:
           key: ${{ secrets.EC2_KEY_IVAN }}
           script: |
             cd /home/ubuntu/dev
+            git pull origin devivan
             echo 'DB_HOST=${{ secrets.DB_HOST }}' > .env
             echo 'DB_USER=${{ secrets.DB_USER }}' >> .env
             echo 'DB_PASSWORD=${{ secrets.DB_PASSWORD }}' >> .env
@@ -105,6 +109,7 @@ jobs:
           key: ${{ secrets.EC2_KEY }}
           script: |
             cd /home/ubuntu/gps
+            git pull origin main
             echo 'DB_HOST=${{ secrets.DB_HOST }}' > .env
             echo 'DB_USER=${{ secrets.DB_USER }}' >> .env
             echo 'DB_PASSWORD=${{ secrets.DB_PASSWORD }}' >> .env
@@ -127,6 +132,7 @@ jobs:
           key: ${{ secrets.EC2_KEY_DANIEL }}
           script: |
             cd /home/ubuntu/gps
+            git pull origin main
             echo 'DB_HOST=${{ secrets.DB_HOST }}' > .env
             echo 'DB_USER=${{ secrets.DB_USER }}' >> .env
             echo 'DB_PASSWORD=${{ secrets.DB_PASSWORD }}' >> .env
@@ -149,6 +155,7 @@ jobs:
           key: ${{ secrets.EC2_KEY_POLO }}
           script: |
             cd /home/ubuntu/gps
+            git pull origin main
             echo 'DB_HOST=${{ secrets.DB_HOST }}' > .env
             echo 'DB_USER=${{ secrets.DB_USER }}' >> .env
             echo 'DB_PASSWORD=${{ secrets.DB_PASSWORD }}' >> .env
@@ -171,6 +178,7 @@ jobs:
           key: ${{ secrets.EC2_KEY_IVAN }}
           script: |
             cd /home/ubuntu/gps
+            git pull origin main
             echo 'DB_HOST=${{ secrets.DB_HOST }}' > .env
             echo 'DB_USER=${{ secrets.DB_USER }}' >> .env
             echo 'DB_PASSWORD=${{ secrets.DB_PASSWORD }}' >> .env
