@@ -75,6 +75,8 @@ async function migrateDB() {
         await client.query('ALTER TABLE ubicaciones ALTER COLUMN latitud DROP NOT NULL');
         await client.query('ALTER TABLE ubicaciones ALTER COLUMN longitud DROP NOT NULL');
         await client.query('ALTER TABLE ubicaciones ALTER COLUMN ip_origen DROP NOT NULL');
+        await client.query('ALTER TABLE ubicaciones ADD COLUMN IF NOT EXISTS vehiculo TEXT');
+        await client.query("UPDATE ubicaciones SET vehiculo = 'V1' WHERE vehiculo IS NULL");
         const { rows } = await client.query(
             "SELECT 1 FROM information_schema.columns WHERE table_name='ubicaciones' AND column_name='protocolo'"
         );
@@ -92,8 +94,8 @@ async function migrateDB() {
 
 async function guardarUbicacion(data, ipOrigen) {
     try {
-        const sql = 'INSERT INTO ubicaciones (latitud, longitud, timestamp_gps, ip_origen) VALUES ($1, $2, $3, $4) RETURNING id';
-        const valores = [data.lat, data.lon, data.time, ipOrigen];
+        const sql = 'INSERT INTO ubicaciones (latitud, longitud, timestamp_gps, ip_origen, vehiculo) VALUES ($1, $2, $3, $4, $5) RETURNING id';
+        const valores = [data.lat, data.lon, data.time, ipOrigen, data.vehiculo];
         const result = await pool.query(sql, valores);
         return result.rows[0].id;
     } catch (err) {
@@ -130,7 +132,8 @@ function parsearDatos(raw) {
         return {
             lat: lat,
             lon: lon,
-            time: String(time).trim()
+            time: String(time).trim(),
+            vehiculo: String(payload.vehiculo || 'V1').trim()
         };
     } catch (e) {
         console.error('[PARSE] Error al procesar paquete:', e.message);
@@ -149,7 +152,7 @@ function iniciarUDP() {
 
         packetCount++;
         console.log(`\n[${timestamp()}] UDP #${packetCount} de ${rinfo.address}:${rinfo.port}`);
-        console.log(`  Lat: ${data.lat}, Lon: ${data.lon}, Time: ${data.time}`);
+        console.log(`  Lat: ${data.lat}, Lon: ${data.lon}, Time: ${data.time}, Vehiculo: ${data.vehiculo}`);
         console.log(`  Bytes: ${msg.length}`);
 
         try {
@@ -164,7 +167,7 @@ function iniciarUDP() {
                 latitud: data.lat,
                 longitud: data.lon,
                 timestamp_gps: data.time,
-                protocolo: 'UDP',
+                vehiculo: data.vehiculo,
                 ip_origen: rinfo.address,
                 puerto_origen: rinfo.port,
                 ip_destino: serverIP,
@@ -336,14 +339,39 @@ function iniciarWeb() {
         }
     });
 
+    // Ultimo punto por vehiculo — para inicializar el mapa real-time con todos los vehiculos activos
+    app.get('/api/ultimo-por-vehiculo', async function(req, res) {
+        try {
+            const result = await pool.query(
+                'SELECT DISTINCT ON (vehiculo) * FROM ubicaciones WHERE latitud IS NOT NULL AND longitud IS NOT NULL ORDER BY vehiculo, id DESC'
+            );
+            res.json(result.rows);
+        } catch (err) {
+            res.status(500).json({ error: err.message });
+        }
+    });
+
+    // Lista de vehiculos distintos conocidos
+    app.get('/api/vehiculos', async function(req, res) {
+        try {
+            const result = await pool.query(
+                "SELECT DISTINCT vehiculo FROM ubicaciones WHERE vehiculo IS NOT NULL ORDER BY vehiculo"
+            );
+            res.json(result.rows.map(function(r) { return r.vehiculo; }));
+        } catch (err) {
+            res.status(500).json({ error: err.message });
+        }
+    });
+
     // Historico filtrado por fecha — el filtro se hace en SQL, no en el cliente
-    // Params: desde (YYYY-MM-DD), hasta (YYYY-MM-DD), horaDesde (HH:MM), horaHasta (HH:MM)
+    // Params: desde (YYYY-MM-DD), hasta (YYYY-MM-DD), horaDesde (HH:MM), horaHasta (HH:MM), vehiculo (opcional)
     app.get('/api/historico', async function(req, res) {
         try {
             var desde = req.query.desde || null;
             var hasta = req.query.hasta || null;
             var horaDesde = req.query.horaDesde || null;
             var horaHasta = req.query.horaHasta || null;
+            var vehiculo = req.query.vehiculo || null;
 
             var conditions = ['latitud IS NOT NULL', 'longitud IS NOT NULL'];
             var params = [];
@@ -360,6 +388,12 @@ function iniciarWeb() {
                 var tsHasta = hasta + ' ' + (horaHasta ? horaHasta + ':00' : '23:59:59');
                 conditions.push("timestamp_gps::timestamp <= $" + idx + "::timestamp");
                 params.push(tsHasta);
+                idx++;
+            }
+
+            if (vehiculo) {
+                conditions.push('vehiculo = $' + idx);
+                params.push(vehiculo);
                 idx++;
             }
 
