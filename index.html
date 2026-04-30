@@ -907,7 +907,7 @@
             <div class="card-title">Vehículos Activos</div>
             <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;">
                 <span style="font-size:12px;color:var(--text-muted,#888);white-space:nowrap;">Seguir:</span>
-                <select id="vehiculoSeguir" onchange="vehiculoSeguido=this.value" style="flex:1;padding:5px 8px;border-radius:6px;border:1px solid var(--border,#444);background:var(--input-bg,#1a1a2e);color:var(--text,#fff);font-size:12px;">
+                <select id="vehiculoSeguir" onchange="setSeguir(this.value)" style="flex:1;padding:5px 8px;border-radius:6px;border:1px solid var(--border,#444);background:var(--input-bg,#1a1a2e);color:var(--text,#fff);font-size:12px;">
                     <option value="">Último activo</option>
                 </select>
             </div>
@@ -1147,6 +1147,7 @@ L.Icon.Default.mergeOptions({
 
 var ultimoPunto=null;
 var vehiculoSeguido='';
+function setSeguir(val){vehiculoSeguido=val;console.log('[RT] Siguiendo:',val||'Último activo');}
 function registrarEnSelector(id){var sel=document.getElementById('vehiculoSeguir');for(var i=0;i<sel.options.length;i++){if(sel.options[i].value===id)return;}var opt=document.createElement('option');opt.value=id;opt.textContent=id;sel.appendChild(opt);}
 var COLORES_VEHICULO=['#4A90D9','#E2574A','#4ACA74','#F5A623','#9B59B6','#1ABC9C'];
 var vehiculoColorIdx={},nextColorIdx=0;
@@ -1398,9 +1399,30 @@ function filtrarHistorico(){
     });
 }
 
+function osrmParaVehiculo(poly, puntosRuta, color){
+    var muestreo=puntosRuta;
+    if(muestreo.length>100){
+        var paso=Math.ceil(muestreo.length/99);
+        var reducido=[muestreo[0]];
+        for(var i=paso;i<muestreo.length-1;i+=paso) reducido.push(muestreo[i]);
+        reducido.push(muestreo[muestreo.length-1]);
+        muestreo=reducido;
+    }
+    var coords=muestreo.map(function(p){return p[1].toFixed(6)+','+p[0].toFixed(6);}).join(';');
+    var url='https://router.project-osrm.org/route/v1/driving/'+coords+'?overview=full&geometries=geojson';
+    fetch(url).then(function(r){return r.json();}).then(function(data){
+        if(data.code==='Ok'&&data.routes.length>0){
+            poly.setLatLngs(data.routes[0].geometry.coordinates.map(function(c){return[c[1],c[0]];}));
+        } else {
+            poly.setLatLngs(puntosRuta);poly.setStyle({opacity:0.7});
+        }
+    }).catch(function(){poly.setLatLngs(puntosRuta);poly.setStyle({opacity:0.7});});
+}
+
 function renderHistorico(datos){
     var tbody=document.getElementById('histBody');tbody.innerHTML='';
-    if(rutaHistPolyline)rutaHistPolyline.setLatLngs([]);
+    if(window.histVehiclePolylines){window.histVehiclePolylines.forEach(function(p){mapaHist.removeLayer(p);});}
+    window.histVehiclePolylines=[];
     if(marcadorHist){mapaHist.removeLayer(marcadorHist);marcadorHist=null;}
     if(window.histCircles){window.histCircles.forEach(function(c){mapaHist.removeLayer(c);});}
     window.histCircles=[];
@@ -1427,57 +1449,42 @@ function renderHistorico(datos){
         })(datos[i],i);
     }
 
-    var todosPuntos=[];
-    for(var i=0;i<datos.length;i++){var lt=parseFloat(datos[i].latitud),lg=parseFloat(datos[i].longitud);if(!isNaN(lt)&&!isNaN(lg))todosPuntos.push([lt,lg]);}
-    var puntosRuta=[];
-    for(var i=0;i<todosPuntos.length;i++){
-        if(puntosRuta.length===0||distanciaM(puntosRuta[puntosRuta.length-1],todosPuntos[i])>30)
-            puntosRuta.push(todosPuntos[i]);
-    }
-    var routeColor=getCS('--route');
-
-    for(var i=0;i<todosPuntos.length;i++){
-        var c=L.circleMarker(todosPuntos[i],{radius:5,color:routeColor,fillColor:routeColor,fillOpacity:0.8,weight:2}).addTo(mapaHist);
-        window.histCircles.push(c);
+    // Agrupar por vehiculo — cada uno tiene su propia polilinea y OSRM
+    var porVehiculo={};
+    for(var i=0;i<datos.length;i++){
+        var vid=datos[i].vehiculo||'V1';
+        if(!porVehiculo[vid])porVehiculo[vid]=[];
+        var lt=parseFloat(datos[i].latitud),lg=parseFloat(datos[i].longitud);
+        if(!isNaN(lt)&&!isNaN(lg))porVehiculo[vid].push([lt,lg]);
     }
 
-    var last=todosPuntos[todosPuntos.length-1];
-    marcadorHist=L.marker(last).addTo(mapaHist);
-    if(todosPuntos.length>1) mapaHist.fitBounds(L.latLngBounds(todosPuntos),{padding:[40,40]});
-    else mapaHist.setView(last,15);
+    var todosLosPuntos=[];
+    Object.keys(porVehiculo).forEach(function(vid){
+        var puntos=porVehiculo[vid];
+        var color=colorVehiculo(vid);
+        todosLosPuntos=todosLosPuntos.concat(puntos);
 
-    if(puntosRuta.length>=2){
-        var muestreo=puntosRuta;
-        if(muestreo.length>100){
-            var paso=Math.ceil(muestreo.length/99);
-            var reducido=[muestreo[0]];
-            for(var i=paso;i<muestreo.length-1;i+=paso) reducido.push(muestreo[i]);
-            reducido.push(muestreo[muestreo.length-1]);
-            muestreo=reducido;
-        }
-        var coords=muestreo.map(function(p){return p[1].toFixed(6)+','+p[0].toFixed(6);}).join(';');
-        var url='https://router.project-osrm.org/route/v1/driving/'+coords+'?overview=full&geometries=geojson';
-        console.log('[HIST] OSRM: '+puntosRuta.length+' waypoints, URL: '+url.length+' chars');
-        fetch(url).then(function(r){
-            console.log('[HIST] OSRM status: '+r.status);
-            return r.json();
-        }).then(function(data){
-            if(data.code==='Ok'&&data.routes.length>0){
-                var routeCoords=data.routes[0].geometry.coordinates.map(function(c){return[c[1],c[0]];});
-                rutaHistPolyline.setLatLngs(routeCoords);
-                rutaHistPolyline.setStyle({color:routeColor,weight:5,opacity:0.85});
-                console.log('[HIST] Ruta dibujada: '+routeCoords.length+' coords');
-            } else {
-                console.log('[HIST] OSRM sin ruta:', data.code);
-                rutaHistPolyline.setLatLngs(puntosRuta);
-                rutaHistPolyline.setStyle({color:routeColor,weight:4,opacity:0.7});
-            }
-        }).catch(function(err){
-            console.log('[HIST] OSRM error:', err);
-            rutaHistPolyline.setLatLngs(puntosRuta);
-            rutaHistPolyline.setStyle({color:routeColor,weight:4,opacity:0.7});
+        puntos.forEach(function(p){
+            var c=L.circleMarker(p,{radius:5,color:color,fillColor:color,fillOpacity:0.8,weight:2}).addTo(mapaHist);
+            window.histCircles.push(c);
         });
-    }
+
+        var poly=L.polyline([],{color:color,weight:5,opacity:0.85}).addTo(mapaHist);
+        window.histVehiclePolylines.push(poly);
+
+        var puntosRuta=[];
+        for(var i=0;i<puntos.length;i++){
+            if(puntosRuta.length===0||distanciaM(puntosRuta[puntosRuta.length-1],puntos[i])>30)
+                puntosRuta.push(puntos[i]);
+        }
+        if(puntosRuta.length>=2) osrmParaVehiculo(poly,puntosRuta,color);
+    });
+
+    if(todosLosPuntos.length===0) return;
+    var last=todosLosPuntos[todosLosPuntos.length-1];
+    marcadorHist=L.marker(last).addTo(mapaHist);
+    if(todosLosPuntos.length>1) mapaHist.fitBounds(L.latLngBounds(todosLosPuntos),{padding:[40,40]});
+    else mapaHist.setView(last,15);
 }
 
 function limpiarFiltroHist(){
@@ -1489,7 +1496,7 @@ function limpiarFiltroHist(){
     document.getElementById('histFechaHasta').removeAttribute('min');
     ocultarErrorFiltro();
     var tbody=document.getElementById('histBody');tbody.innerHTML='';
-    if(rutaHistPolyline)rutaHistPolyline.setLatLngs([]);
+    if(window.histVehiclePolylines){window.histVehiclePolylines.forEach(function(p){mapaHist.removeLayer(p);});window.histVehiclePolylines=[];}
     if(marcadorHist&&mapaHist){mapaHist.removeLayer(marcadorHist);marcadorHist=null;}
     if(window.histCircles){window.histCircles.forEach(function(c){mapaHist.removeLayer(c);});window.histCircles=[];}
     document.getElementById('histCount').textContent='Selecciona un rango de fechas y presiona Filtrar';
