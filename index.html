@@ -1395,19 +1395,19 @@ function renderHistorico(datos){
             row.innerHTML='<td>'+(idx+1)+'</td><td>'+fh.fecha+'</td><td>'+fh.hora+'</td><td>'+d.latitud+'</td><td>'+d.longitud+'</td>';
             row.style.cursor='pointer';
             var lat=parseFloat(d.latitud),lng=parseFloat(d.longitud);
-            row.onclick=function(){
+            if(!isNaN(lat)&&!isNaN(lng)){row.onclick=function(){
                 var prev=tbody.querySelector('.selected');if(prev)prev.classList.remove('selected');
                 this.classList.add('selected');
                 if(!marcadorHist)marcadorHist=L.marker([lat,lng]).addTo(mapaHist);
                 else marcadorHist.setLatLng([lat,lng]);
                 mapaHist.setView([lat,lng],16);
-            };
+            };}
             tbody.appendChild(row);
         })(datos[i],i);
     }
 
     var todosPuntos=[];
-    for(var i=0;i<datos.length;i++) todosPuntos.push([parseFloat(datos[i].latitud),parseFloat(datos[i].longitud)]);
+    for(var i=0;i<datos.length;i++){var lt=parseFloat(datos[i].latitud),lg=parseFloat(datos[i].longitud);if(!isNaN(lt)&&!isNaN(lg))todosPuntos.push([lt,lg]);}
     var puntosRuta=[];
     for(var i=0;i<todosPuntos.length;i++){
         if(puntosRuta.length===0||distanciaM(puntosRuta[puntosRuta.length-1],todosPuntos[i])>30)

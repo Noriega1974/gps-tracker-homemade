@@ -345,7 +345,7 @@ function iniciarWeb() {
             var horaDesde = req.query.horaDesde || null;
             var horaHasta = req.query.horaHasta || null;
 
-            var conditions = [];
+            var conditions = ['latitud IS NOT NULL', 'longitud IS NOT NULL'];
             var params = [];
             var idx = 1;
 
