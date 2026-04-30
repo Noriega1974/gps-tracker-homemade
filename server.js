@@ -406,14 +406,12 @@ function iniciarWeb() {
 
     app.get('/api/stats', async function(req, res) {
         try {
-            const [totalRes, byProtoRes, ultimaRes] = await Promise.all([
+            const [totalRes, ultimaRes] = await Promise.all([
                 pool.query('SELECT COUNT(*) as total FROM ubicaciones'),
-                pool.query('SELECT protocolo, COUNT(*) as total FROM ubicaciones GROUP BY protocolo'),
-                pool.query('SELECT * FROM ubicaciones ORDER BY id DESC LIMIT 1')
+                pool.query('SELECT * FROM ubicaciones WHERE latitud IS NOT NULL AND longitud IS NOT NULL ORDER BY id DESC LIMIT 1')
             ]);
             res.json({
                 total: totalRes.rows[0].total,
-                por_protocolo: byProtoRes.rows,
                 ultima_ubicacion: ultimaRes.rows[0] || null
             });
         } catch (err) {
