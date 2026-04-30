@@ -905,6 +905,12 @@
 
         <div class="card">
             <div class="card-title">Vehículos Activos</div>
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;">
+                <span style="font-size:12px;color:var(--text-muted,#888);white-space:nowrap;">Seguir:</span>
+                <select id="vehiculoSeguir" onchange="vehiculoSeguido=this.value" style="flex:1;padding:5px 8px;border-radius:6px;border:1px solid var(--border,#444);background:var(--input-bg,#1a1a2e);color:var(--text,#fff);font-size:12px;">
+                    <option value="">Último activo</option>
+                </select>
+            </div>
             <div id="vehiculosPanel"><p style="color:var(--text-muted,#888);font-size:13px;">Esperando datos...</p></div>
             <button class="btn-accent" onclick="limpiarRuta()" style="margin-top:10px;">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" width="16" height="16"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
@@ -1140,6 +1146,8 @@ L.Icon.Default.mergeOptions({
 });
 
 var ultimoPunto=null;
+var vehiculoSeguido='';
+function registrarEnSelector(id){var sel=document.getElementById('vehiculoSeguir');for(var i=0;i<sel.options.length;i++){if(sel.options[i].value===id)return;}var opt=document.createElement('option');opt.value=id;opt.textContent=id;sel.appendChild(opt);}
 var COLORES_VEHICULO=['#4A90D9','#E2574A','#4ACA74','#F5A623','#9B59B6','#1ABC9C'];
 var vehiculoColorIdx={},nextColorIdx=0;
 function colorVehiculo(id){if(!(id in vehiculoColorIdx)){vehiculoColorIdx[id]=nextColorIdx%COLORES_VEHICULO.length;nextColorIdx++;}return COLORES_VEHICULO[vehiculoColorIdx[id]];}
@@ -1189,10 +1197,11 @@ function distanciaM(a,b){
 function actualizarMapa(lat,lon,vehiculo){
     var p=[parseFloat(lat),parseFloat(lon)];
     vehiculo=vehiculo||'V1';
+    registrarEnSelector(vehiculo);
     var v=getVehicleState(vehiculo);
     if(!v.marcador){v.marcador=L.marker(p,{icon:crearIconoVehiculo(vehiculo,v.color)}).addTo(mapa);}
     else{v.marcador.setLatLng(p);}
-    mapa.setView(p,mapa.getZoom());
+    if(vehiculoSeguido===''||vehiculoSeguido===vehiculo){mapa.setView(p,mapa.getZoom());}
     var c=L.circleMarker(p,{radius:5,color:v.color,fillColor:v.color,fillOpacity:0.85,weight:2}).addTo(mapa);
     v.circles.push(c);
     v.polyline.addLatLng(p);
