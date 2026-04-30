@@ -904,16 +904,17 @@
         <div class="card map-card map-wrap"><div id="mapa"></div></div>
 
         <div class="card">
-            <div class="card-title">Posición Actual</div>
-            <div class="gps-grid">
-                <div class="gps-item"><span class="gps-item-label">Latitud</span><span class="gps-item-value" id="lat">---</span></div>
-                <div class="gps-item"><span class="gps-item-label">Longitud</span><span class="gps-item-value" id="lng">---</span></div>
-                <div class="gps-item"><span class="gps-item-label">Fecha</span><span class="gps-item-value" id="fecha">---</span></div>
-                <div class="gps-item"><span class="gps-item-label">Hora (COL)</span><span class="gps-item-value" id="hora">---</span></div>
+            <div class="card-title">Vehículos Activos</div>
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;">
+                <span style="font-size:12px;color:var(--text-muted,#888);white-space:nowrap;">Seguir:</span>
+                <select id="vehiculoSeguir" onchange="vehiculoSeguido=this.value" style="flex:1;padding:5px 8px;border-radius:6px;border:1px solid var(--border,#444);background:var(--input-bg,#1a1a2e);color:var(--text,#fff);font-size:12px;">
+                    <option value="">Último activo</option>
+                </select>
             </div>
-            <button class="btn-accent" onclick="limpiarRuta()">
+            <div id="vehiculosPanel"><p style="color:var(--text-muted,#888);font-size:13px;">Esperando datos...</p></div>
+            <button class="btn-accent" onclick="limpiarRuta()" style="margin-top:10px;">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" width="16" height="16"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
-                Limpiar Trayectoria
+                Limpiar Trayectorias
             </button>
         </div>
     </div>
@@ -948,6 +949,12 @@
                     <input type="date" id="histFechaHasta" onchange="onHastaChange()">
                     <input type="time" id="histHoraHasta"  onchange="onHoraChange()">
                 </div>
+                <div class="filter-group">
+                    <label>Vehículo</label>
+                    <select id="histVehiculo" style="padding:6px 10px;border-radius:6px;border:1px solid var(--border,#444);background:var(--input-bg,#1a1a2e);color:var(--text,#fff);font-size:13px;">
+                        <option value="">Todos</option>
+                    </select>
+                </div>
                 <button class="filter-btn" id="btnFiltrar" onclick="filtrarHistorico()" disabled>Filtrar</button>
                 <button class="filter-btn secondary" onclick="limpiarFiltroHist()">Limpiar</button>
             </div>
@@ -962,7 +969,7 @@
             </div>
             <div id="histTableWrap" style="display:none;">
                 <p class="pkt-count" id="histCount">Selecciona un rango de fechas y presiona Filtrar</p>
-                <div class="table-wrap"><table><thead><tr><th>No.</th><th>Fecha</th><th>Hora (COL)</th><th>Latitud</th><th>Longitud</th></tr></thead><tbody id="histBody"></tbody></table></div>
+                <div class="table-wrap"><table><thead><tr><th>No.</th><th>Vehículo</th><th>Fecha</th><th>Hora (COL)</th><th>Latitud</th><th>Longitud</th></tr></thead><tbody id="histBody"></tbody></table></div>
             </div>
         </div>
     </div>
@@ -1076,7 +1083,6 @@ function setTheme(t){
     document.getElementById('themeLabel').textContent=t==='dark'?'Modo Dia':'Modo Noche';
     var icon=document.getElementById('themeIcon');
     icon.innerHTML=t==='dark'?'<path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>':'<circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>';
-    if(rutaPolyline)rutaPolyline.setStyle({color:getCS('--route')});
     if(rutaHistPolyline)rutaHistPolyline.setStyle({color:getCS('--route')});
     if(zonaPolyline)zonaPolyline.setStyle({color:getCS('--marker')});
     if(zonaCircle)zonaCircle.setStyle({color:getCS('--accent'),fillColor:getCS('--accent')});
@@ -1116,7 +1122,15 @@ function showView(name,el){
         },150);
     }
     if(name==='realtime')setTimeout(function(){mapa.invalidateSize();},150);
-    if(name==='historical'&&mapaHist)setTimeout(function(){mapaHist.invalidateSize();},150);
+    if(name==='historical'){
+        if(mapaHist)setTimeout(function(){mapaHist.invalidateSize();},150);
+        fetch(basePath+'api/vehiculos').then(function(r){return r.json();}).then(function(ids){
+            var sel=document.getElementById('histVehiculo');
+            var current=sel.value;
+            while(sel.options.length>1)sel.remove(1);
+            ids.forEach(function(id){var opt=document.createElement('option');opt.value=id;opt.textContent=id;if(id===current)opt.selected=true;sel.appendChild(opt);});
+        }).catch(function(){});
+    }
     if(name==='zona'&&mapaZona)setTimeout(function(){mapaZona.invalidateSize();},150);
 }
 
@@ -1131,7 +1145,18 @@ L.Icon.Default.mergeOptions({
     shadowUrl:'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png'
 });
 
-var marcador=null,rutaPolyline=L.polyline([],{color:getCS('--route'),weight:5}).addTo(mapa),ultimoPunto=null;
+var ultimoPunto=null;
+var vehiculoSeguido='';
+function registrarEnSelector(id){var sel=document.getElementById('vehiculoSeguir');for(var i=0;i<sel.options.length;i++){if(sel.options[i].value===id)return;}var opt=document.createElement('option');opt.value=id;opt.textContent=id;sel.appendChild(opt);}
+var COLORES_VEHICULO=['#4A90D9','#E2574A','#4ACA74','#F5A623','#9B59B6','#1ABC9C'];
+var vehiculoColorIdx={},nextColorIdx=0;
+function colorVehiculo(id){if(!(id in vehiculoColorIdx)){vehiculoColorIdx[id]=nextColorIdx%COLORES_VEHICULO.length;nextColorIdx++;}return COLORES_VEHICULO[vehiculoColorIdx[id]];}
+var vehiculosRT={};
+function getVehicleState(id){
+    if(!vehiculosRT[id]){var col=colorVehiculo(id);vehiculosRT[id]={marcador:null,polyline:L.polyline([],{color:col,weight:5}).addTo(mapa),circles:[],color:col};}
+    return vehiculosRT[id];
+}
+function crearIconoVehiculo(id,color){return L.divIcon({className:'',html:'<div style="background:'+color+';color:#fff;border-radius:50%;width:24px;height:24px;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:9px;border:2px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,0.35);">'+id+'</div>',iconSize:[24,24],iconAnchor:[12,12]});}
 
 // Base path para que las rutas API funcionen tanto en / como en /dev/, /devdaniel/, etc.
 var basePath = (function(){
@@ -1140,20 +1165,27 @@ var basePath = (function(){
     return match ? match[1] : '/';
 })();
 
-// Cargar ultimo punto al iniciar (real-time)
-fetch(basePath + 'api/ubicaciones?limit=1').then(function(r){return r.json();}).then(function(data){
+// Cargar ultimo punto de cada vehiculo al iniciar (real-time)
+fetch(basePath + 'api/ultimo-por-vehiculo').then(function(r){return r.json();}).then(function(data){
     if(Array.isArray(data)&&data.length>0){
-        var d=data[0],p=[parseFloat(d.latitud),parseFloat(d.longitud)];
-        marcador=L.marker(p).addTo(mapa);mapa.setView(p,15);ultimoPunto=p;
-        actualizarGPS(d);
+        data.forEach(function(d){
+            var p=[parseFloat(d.latitud),parseFloat(d.longitud)];
+            ultimoPunto=p;
+            actualizarGPS(d);
+            actualizarMapa(d.latitud,d.longitud,d.vehiculo||'V1');
+        });
+        if(ultimoPunto) mapa.setView(ultimoPunto,15);
     }
 }).catch(function(){});
 
 function limpiarRuta(){
-    rutaPolyline.setLatLngs([]);
-    if(window.rtCircles){window.rtCircles.forEach(function(c){mapa.removeLayer(c);});window.rtCircles=[];}
+    for(var vid in vehiculosRT){
+        var v=vehiculosRT[vid];
+        v.polyline.setLatLngs([]);
+        v.circles.forEach(function(c){mapa.removeLayer(c);});
+        v.circles=[];
+    }
 }
-window.rtCircles=[];
 
 function distanciaM(a,b){
     var R=6371000,dLat=(b[0]-a[0])*Math.PI/180,dLon=(b[1]-a[1])*Math.PI/180;
@@ -1162,14 +1194,17 @@ function distanciaM(a,b){
     return R*2*Math.atan2(Math.sqrt(h),Math.sqrt(1-h));
 }
 
-function actualizarMapa(lat,lon){
+function actualizarMapa(lat,lon,vehiculo){
     var p=[parseFloat(lat),parseFloat(lon)];
-    if(!marcador){marcador=L.marker(p).addTo(mapa);}else{marcador.setLatLng(p);}
-    mapa.setView(p,mapa.getZoom());
-    var routeColor=getCS('--route');
-    var c=L.circleMarker(p,{radius:6,color:routeColor,fillColor:routeColor,fillOpacity:0.9,weight:2}).addTo(mapa);
-    window.rtCircles.push(c);
-    rutaPolyline.addLatLng(p);
+    vehiculo=vehiculo||'V1';
+    registrarEnSelector(vehiculo);
+    var v=getVehicleState(vehiculo);
+    if(!v.marcador){v.marcador=L.marker(p,{icon:crearIconoVehiculo(vehiculo,v.color)}).addTo(mapa);}
+    else{v.marcador.setLatLng(p);}
+    if(vehiculoSeguido===''||vehiculoSeguido===vehiculo){mapa.setView(p,mapa.getZoom());}
+    var c=L.circleMarker(p,{radius:5,color:v.color,fillColor:v.color,fillOpacity:0.85,weight:2}).addTo(mapa);
+    v.circles.push(c);
+    v.polyline.addLatLng(p);
     ultimoPunto=p;
 }
 
@@ -1193,16 +1228,31 @@ function conectarWS(){
         var msg=JSON.parse(e.data);
         if(msg.type==='nueva_ubicacion'){
             actualizarGPS(msg.data);
-            actualizarMapa(msg.data.latitud,msg.data.longitud);
+            actualizarMapa(msg.data.latitud,msg.data.longitud,msg.data.vehiculo||'V1');
         }
     };
     ws.onclose=function(){setStatus(false);setTimeout(conectarWS,3000);};
 }
 
 function actualizarGPS(d){
+    var vid=d.vehiculo||'V1';
     var fh=extraerFechaHora(d.timestamp_gps);
-    document.getElementById('lat').textContent=d.latitud;document.getElementById('lng').textContent=d.longitud;
-    document.getElementById('fecha').textContent=fh.fecha;document.getElementById('hora').textContent=fh.hora;
+    var color=colorVehiculo(vid);
+    var panel=document.getElementById('vehiculosPanel');
+    var card=document.getElementById('vcard-'+vid);
+    if(!card){
+        panel.innerHTML='';
+        card=document.createElement('div');
+        card.id='vcard-'+vid;
+        card.style.cssText='border-left:4px solid '+color+';padding:10px 12px;margin-bottom:8px;border-radius:6px;background:var(--surface2,rgba(255,255,255,0.04));';
+        card.innerHTML='<div style="font-weight:700;color:'+color+';margin-bottom:8px;font-size:13px;">'+vid+'</div><div class="gps-grid" id="vgrid-'+vid+'"></div>';
+        panel.appendChild(card);
+    }
+    document.getElementById('vgrid-'+vid).innerHTML=
+        '<div class="gps-item"><span class="gps-item-label">Latitud</span><span class="gps-item-value">'+d.latitud+'</span></div>'+
+        '<div class="gps-item"><span class="gps-item-label">Longitud</span><span class="gps-item-value">'+d.longitud+'</span></div>'+
+        '<div class="gps-item"><span class="gps-item-label">Fecha</span><span class="gps-item-value">'+fh.fecha+'</span></div>'+
+        '<div class="gps-item"><span class="gps-item-label">Hora (COL)</span><span class="gps-item-value">'+fh.hora+'</span></div>';
 }
 
 /* ═══════════════════════════════════════════════════════
@@ -1327,6 +1377,8 @@ function filtrarHistorico(){
     if(hasta) params.push('hasta='+hasta);
     if(horaDesde) params.push('horaDesde='+horaDesde);
     if(horaHasta) params.push('horaHasta='+horaHasta);
+    var vehiculo=document.getElementById('histVehiculo').value;
+    if(vehiculo) params.push('vehiculo='+encodeURIComponent(vehiculo));
     var url=basePath + 'api/historico?'+params.join('&');
 
     document.getElementById('histLoading').classList.add('show');
@@ -1360,7 +1412,8 @@ function renderHistorico(datos){
         (function(d,idx){
             var fh=extraerFechaHora(d.timestamp_gps||d.fecha_recepcion);
             var row=document.createElement('tr');
-            row.innerHTML='<td>'+(idx+1)+'</td><td>'+fh.fecha+'</td><td>'+fh.hora+'</td><td>'+d.latitud+'</td><td>'+d.longitud+'</td>';
+            var vid=d.vehiculo||'V1';var vcol=colorVehiculo(vid);
+            row.innerHTML='<td>'+(idx+1)+'</td><td><span style="color:'+vcol+';font-weight:700;">'+vid+'</span></td><td>'+fh.fecha+'</td><td>'+fh.hora+'</td><td>'+d.latitud+'</td><td>'+d.longitud+'</td>';
             row.style.cursor='pointer';
             var lat=parseFloat(d.latitud),lng=parseFloat(d.longitud);
             if(!isNaN(lat)&&!isNaN(lng)){row.onclick=function(){
