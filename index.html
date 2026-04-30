@@ -1132,7 +1132,6 @@ L.Icon.Default.mergeOptions({
 });
 
 var marcador=null,rutaPolyline=L.polyline([],{color:getCS('--route'),weight:5}).addTo(mapa),ultimoPunto=null;
-var osrmSeq=0;
 
 // Base path para que las rutas API funcionen tanto en / como en /dev/, /devdaniel/, etc.
 var basePath = (function(){
@@ -1149,23 +1148,6 @@ fetch(basePath + 'api/ubicaciones?limit=1').then(function(r){return r.json();}).
         actualizarGPS(d);
     }
 }).catch(function(){});
-
-function obtenerRutaOSRM(desde,hasta,cb){
-    var url='https://router.project-osrm.org/route/v1/driving/'+desde[1]+','+desde[0]+';'+hasta[1]+','+hasta[0]+'?overview=full&geometries=geojson';
-    var timeout=setTimeout(function(){cb([desde,hasta]);},8000);
-    fetch(url).then(function(r){
-        if(!r.ok) throw new Error('OSRM '+r.status);
-        return r.json();
-    }).then(function(d){
-        clearTimeout(timeout);
-        if(d.code==='Ok'&&d.routes.length>0)
-            cb(d.routes[0].geometry.coordinates.map(function(c){return[c[1],c[0]];}));
-        else cb([desde,hasta]);
-    }).catch(function(){
-        clearTimeout(timeout);
-        cb([desde,hasta]);
-    });
-}
 
 function limpiarRuta(){
     rutaPolyline.setLatLngs([]);
@@ -1187,21 +1169,7 @@ function actualizarMapa(lat,lon){
     var routeColor=getCS('--route');
     var c=L.circleMarker(p,{radius:6,color:routeColor,fillColor:routeColor,fillOpacity:0.9,weight:2}).addTo(mapa);
     window.rtCircles.push(c);
-    if(ultimoPunto){
-        var prevPunto=ultimoPunto;
-        var ptsAntes=rutaPolyline.getLatLngs().length;
-        var mySeq=++osrmSeq;
-        var pts=rutaPolyline.getLatLngs();
-        pts.push(prevPunto);pts.push(p);
-        rutaPolyline.setLatLngs(pts);
-        obtenerRutaOSRM(prevPunto,p,function(coords){
-            if(mySeq!==osrmSeq) return;
-            var allPts=rutaPolyline.getLatLngs();
-            var base=allPts.slice(0,ptsAntes);
-            coords.forEach(function(c){base.push(c);});
-            rutaPolyline.setLatLngs(base);
-        });
-    }
+    rutaPolyline.addLatLng(p);
     ultimoPunto=p;
 }
 
@@ -1395,19 +1363,19 @@ function renderHistorico(datos){
             row.innerHTML='<td>'+(idx+1)+'</td><td>'+fh.fecha+'</td><td>'+fh.hora+'</td><td>'+d.latitud+'</td><td>'+d.longitud+'</td>';
             row.style.cursor='pointer';
             var lat=parseFloat(d.latitud),lng=parseFloat(d.longitud);
-            row.onclick=function(){
+            if(!isNaN(lat)&&!isNaN(lng)){row.onclick=function(){
                 var prev=tbody.querySelector('.selected');if(prev)prev.classList.remove('selected');
                 this.classList.add('selected');
                 if(!marcadorHist)marcadorHist=L.marker([lat,lng]).addTo(mapaHist);
                 else marcadorHist.setLatLng([lat,lng]);
                 mapaHist.setView([lat,lng],16);
-            };
+            };}
             tbody.appendChild(row);
         })(datos[i],i);
     }
 
     var todosPuntos=[];
-    for(var i=0;i<datos.length;i++) todosPuntos.push([parseFloat(datos[i].latitud),parseFloat(datos[i].longitud)]);
+    for(var i=0;i<datos.length;i++){var lt=parseFloat(datos[i].latitud),lg=parseFloat(datos[i].longitud);if(!isNaN(lt)&&!isNaN(lg))todosPuntos.push([lt,lg]);}
     var puntosRuta=[];
     for(var i=0;i<todosPuntos.length;i++){
         if(puntosRuta.length===0||distanciaM(puntosRuta[puntosRuta.length-1],todosPuntos[i])>30)
