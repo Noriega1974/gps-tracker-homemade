@@ -328,7 +328,7 @@ function iniciarWeb() {
         try {
             const limit = Math.min(parseInt(req.query.limit) || 50, 500);
             const result = await pool.query(
-                'SELECT * FROM ubicaciones ORDER BY id DESC LIMIT $1', [limit]
+                'SELECT * FROM ubicaciones WHERE latitud IS NOT NULL AND longitud IS NOT NULL ORDER BY id DESC LIMIT $1', [limit]
             );
             res.json(result.rows);
         } catch (err) {
