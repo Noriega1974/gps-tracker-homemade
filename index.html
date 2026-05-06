@@ -1579,8 +1579,17 @@ function renderZonaBase(){
         window.zonaCircles.push(c);
     });
     Object.keys(puntosPorVehiculo).forEach(function(veh){
-        var pl=L.polyline(puntosPorVehiculo[veh],{color:colorVehiculo(veh),weight:3,opacity:0.65}).addTo(mapaZona);
+        var col=colorVehiculo(veh);
+        var puntos=puntosPorVehiculo[veh];
+        var pl=L.polyline([],{color:col,weight:4,opacity:0.85}).addTo(mapaZona);
         window.zonaPolylines.push(pl);
+        var puntosRuta=[];
+        for(var i=0;i<puntos.length;i++){
+            if(puntosRuta.length===0||distanciaM(puntosRuta[puntosRuta.length-1],puntos[i])>30)
+                puntosRuta.push(puntos[i]);
+        }
+        if(puntosRuta.length>=2) osrmParaVehiculo(pl,puntosRuta,col);
+        else if(puntosRuta.length===1) pl.setLatLngs(puntosRuta);
     });
 }
 
