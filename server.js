@@ -217,7 +217,7 @@ function iniciarWeb() {
     // Ultimo punto (para real-time al cargar)
     app.get('/api/ubicaciones', async function(req, res) {
         try {
-            const limit = Math.min(parseInt(req.query.limit) || 50, 500);
+            const limit = Math.min(parseInt(req.query.limit) || 50, 2000);
             const result = await pool.query(
                 'SELECT * FROM ubicaciones WHERE latitud IS NOT NULL AND longitud IS NOT NULL ORDER BY id DESC LIMIT $1', [limit]
             );
@@ -286,7 +286,7 @@ function iniciarWeb() {
             }
 
             var where = conditions.length > 0 ? ' WHERE ' + conditions.join(' AND ') : '';
-            var sql = 'SELECT * FROM ubicaciones' + where + ' ORDER BY id DESC LIMIT 500';
+            var sql = 'SELECT * FROM ubicaciones' + where + ' ORDER BY id DESC LIMIT 2000';
 
             console.log('[HIST] SQL:', sql, '| Params:', params);
             var result = await pool.query(sql, params);
@@ -329,7 +329,7 @@ function iniciarWeb() {
                 idx++;
             }
 
-            var sql = 'SELECT * FROM ubicaciones WHERE ' + conditions.join(' AND ') + ' ORDER BY id ASC LIMIT 500';
+            var sql = 'SELECT * FROM ubicaciones WHERE ' + conditions.join(' AND ') + ' ORDER BY id ASC LIMIT 2000';
             console.log('[ZONA] SQL:', sql, '| Params:', params);
             var result = await pool.query(sql, params);
             res.json(result.rows);

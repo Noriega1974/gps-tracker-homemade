@@ -1621,7 +1621,7 @@ function renderZonaAt(idx){
     var p=[parseFloat(cur.latitud),parseFloat(cur.longitud)];
     var fh=extraerFechaHora(cur.timestamp_gps||cur.fecha_recepcion);
     zonaSliderMarker=L.circleMarker(p,{radius:10,color:'#fff',fillColor:col,fillOpacity:1,weight:3}).addTo(mapaZona);
-    zonaSliderMarker.bindPopup('<strong>'+veh+'</strong><br>'+fh.fecha+'<br>'+fh.hora).openPopup();
+    zonaSliderMarker.bindPopup('<strong>'+veh+'</strong><br>'+fh.fecha+'<br>'+fh.hora);
     document.getElementById('zonaSliderLabel').textContent=(idx+1)+'/'+window.zonaFiltrados.length;
     document.getElementById('zonaSliderInfo').textContent=veh+' · '+fh.hora;
 }
