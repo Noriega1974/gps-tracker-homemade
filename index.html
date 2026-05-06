@@ -1027,7 +1027,7 @@ function showView(name,el){
                 zonaCenter=[e.latlng.lat,e.latlng.lng];
                 actualizarZonaVisual();
                 actualizarCoordZona();
-                filtrarZona();
+                filtrarZona(true);
             });
             mapaZonaInit=true;
         },150);
@@ -1497,11 +1497,11 @@ function onZonaRadioChange(){
     actualizarZonaVisual();
     if(zonaCenter){
         clearTimeout(zonaDebounceTimer);
-        zonaDebounceTimer=setTimeout(filtrarZona,600);
+        zonaDebounceTimer=setTimeout(function(){filtrarZona(false);},600);
     }
 }
 
-function filtrarZona(){
+function filtrarZona(fitMap){
     if(!zonaCenter) return;
     var radio=parseInt(document.getElementById('zonaRadio').value)||200;
     var url=basePath+'api/zona?lat='+zonaCenter[0]+'&lon='+zonaCenter[1]+'&radio='+radio;
@@ -1509,7 +1509,7 @@ function filtrarZona(){
     document.getElementById('zonaCount').textContent='Consultando...';
     fetch(url).then(function(r){return r.json();}).then(function(data){
         document.getElementById('zonaLoading').classList.remove('show');
-        if(Array.isArray(data)){renderZona(data);}
+        if(Array.isArray(data)){renderZona(data,fitMap);}
         else{document.getElementById('zonaCount').textContent='Error al consultar registros';}
     }).catch(function(err){
         document.getElementById('zonaLoading').classList.remove('show');
@@ -1518,7 +1518,7 @@ function filtrarZona(){
     });
 }
 
-function renderZona(datos){
+function renderZona(datos,fitMap){
     window.zonaDatos=datos;
     document.getElementById('zonaCount').textContent='Puntos encontrados: '+datos.length;
     document.getElementById('zonaBody').innerHTML='';
@@ -1551,9 +1551,11 @@ function renderZona(datos){
 
     // Ajustar bounds al total
     var pts=datos.map(function(d){return[parseFloat(d.latitud),parseFloat(d.longitud)];});
-    var bounds=L.latLngBounds(pts);
-    if(zonaCircle) bounds.extend(zonaCircle.getBounds());
-    mapaZona.fitBounds(bounds,{padding:[40,40]});
+    if(fitMap){
+        var bounds=L.latLngBounds(pts);
+        if(zonaCircle) bounds.extend(zonaCircle.getBounds());
+        mapaZona.fitBounds(bounds,{padding:[40,40]});
+    }
 }
 
 function limpiarCapasZona(){
