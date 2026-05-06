@@ -1068,6 +1068,11 @@
 
         <div class="card" id="zonaSliderCard" style="display:none;">
             <div class="card-title">Reproducir ruta</div>
+            <div style="margin-bottom:12px;">
+                <select id="zonaVehSel" onchange="onZonaVehChange()" style="width:100%;padding:6px 10px;border-radius:6px;border:1px solid var(--border,#444);background:var(--input-bg,#1a1a2e);color:var(--text,#fff);font-size:13px;">
+                    <option value="">Todos los vehículos</option>
+                </select>
+            </div>
             <div class="replay-row">
                 <span class="replay-counter" id="zonaSliderLabel">0/0</span>
                 <input type="range" id="zonaSlider" min="0" max="0" value="0" oninput="onZonaSlider()">
@@ -1120,7 +1125,7 @@ function showView(name,el){
             document.getElementById('histFechaDesde').value=hoy;
             document.getElementById('histFechaHasta').value=hoy;
             document.getElementById('histHoraDesde').value='00:00';
-            document.getElementById('histHoraHasta').value='11:59';
+            document.getElementById('histHoraHasta').value='23:59';
             checkFiltroListo();
             mapaHistInit=true;
         },150);
@@ -1705,7 +1710,9 @@ var zonaMarcador=null,zonaCircle=null,zonaCenter=null;
 window.zonaCircles=[];
 window.zonaPolylines=[];
 window.zonaDatos=[];
+window.zonaFiltrados=[];
 var zonaDebounceTimer=null;
+var zonaSliderMarker=null;
 
 function toggleZonaTable(){
     var wrap=document.getElementById('zonaTableWrap');
@@ -1762,102 +1769,109 @@ function filtrarZona(){
 function renderZona(datos){
     window.zonaDatos=datos;
     document.getElementById('zonaCount').textContent='Puntos encontrados: '+datos.length;
-    if(window.zonaCircles){window.zonaCircles.forEach(function(c){mapaZona.removeLayer(c);});}
-    window.zonaCircles=[];
-    if(window.zonaPolylines){window.zonaPolylines.forEach(function(pl){mapaZona.removeLayer(pl);});}
-    window.zonaPolylines=[];
     document.getElementById('zonaBody').innerHTML='';
-    if(datos.length===0){document.getElementById('zonaSliderCard').style.display='none';return;}
-
-    // Slider setup — empieza en el último punto (todos visibles)
-    var slider=document.getElementById('zonaSlider');
-    slider.min=0;slider.max=datos.length-1;slider.value=datos.length-1;
-    document.getElementById('zonaSliderCard').style.display='block';
-
-    // Dibujar todos los puntos en estado inicial
-    var todosPuntos=[];
-    var puntosPorVehiculo={};
-    var tbody=document.getElementById('zonaBody');
-    for(var i=0;i<datos.length;i++){
-        var d=datos[i];
-        var veh=d.vehiculo||'V1';
-        var col=colorVehiculo(veh);
-        var fh=extraerFechaHora(d.timestamp_gps||d.fecha_recepcion);
-        var p=[parseFloat(d.latitud),parseFloat(d.longitud)];
-        todosPuntos.push(p);
-        if(!puntosPorVehiculo[veh]) puntosPorVehiculo[veh]=[];
-        puntosPorVehiculo[veh].push(p);
-        var c=L.circleMarker(p,{radius:5,color:col,fillColor:col,fillOpacity:0.8,weight:1.5}).addTo(mapaZona);
-        c.bindPopup('<strong>'+veh+'</strong><br>'+fh.fecha+'<br>'+fh.hora);
-        window.zonaCircles.push(c);
-        var row=document.createElement('tr');
-        row.innerHTML='<td>'+(i+1)+'</td><td>'+fh.fecha+'</td><td>'+fh.hora+'</td><td>'+d.latitud+'</td><td>'+d.longitud+'</td><td>'+veh+'</td>';
-        tbody.appendChild(row);
+    if(datos.length===0){
+        document.getElementById('zonaSliderCard').style.display='none';
+        limpiarCapasZona();
+        return;
     }
-    Object.keys(puntosPorVehiculo).forEach(function(veh){
-        var pl=L.polyline(puntosPorVehiculo[veh],{color:colorVehiculo(veh),weight:3,opacity:0.7}).addTo(mapaZona);
-        window.zonaPolylines.push(pl);
+
+    // Poblar selector de vehículo con los que hay en los datos
+    var vehs=[];
+    datos.forEach(function(d){var v=d.vehiculo||'V1';if(vehs.indexOf(v)===-1)vehs.push(v);});
+    vehs.sort();
+    var sel=document.getElementById('zonaVehSel');
+    sel.innerHTML='<option value="">Todos los vehículos</option>';
+    vehs.forEach(function(v){var o=document.createElement('option');o.value=v;o.textContent=v;sel.appendChild(o);});
+
+    // Tabla
+    var tbody=document.getElementById('zonaBody');
+    datos.forEach(function(d,i){
+        var fh=extraerFechaHora(d.timestamp_gps||d.fecha_recepcion);
+        var row=document.createElement('tr');
+        row.innerHTML='<td>'+(i+1)+'</td><td>'+fh.fecha+'</td><td>'+fh.hora+'</td><td>'+d.latitud+'</td><td>'+d.longitud+'</td><td>'+(d.vehiculo||'V1')+'</td>';
+        tbody.appendChild(row);
     });
-    var bounds=L.latLngBounds(todosPuntos);
+
+    // Dibujar todos los vehículos como capa base y configurar slider
+    renderZonaBase();
+    setupZonaSlider();
+
+    // Ajustar bounds al total
+    var pts=datos.map(function(d){return[parseFloat(d.latitud),parseFloat(d.longitud)];});
+    var bounds=L.latLngBounds(pts);
     if(zonaCircle) bounds.extend(zonaCircle.getBounds());
     mapaZona.fitBounds(bounds,{padding:[40,40]});
-
-    // Label del slider en posición inicial (todos)
-    var last=datos[datos.length-1];
-    var lfh=extraerFechaHora(last.timestamp_gps||last.fecha_recepcion);
-    document.getElementById('zonaSliderLabel').textContent=datos.length+'/'+datos.length;
-    document.getElementById('zonaSliderInfo').textContent=(last.vehiculo||'V1')+' · '+lfh.hora;
 }
+
+function limpiarCapasZona(){
+    if(window.zonaCircles){window.zonaCircles.forEach(function(c){mapaZona.removeLayer(c);});window.zonaCircles=[];}
+    if(window.zonaPolylines){window.zonaPolylines.forEach(function(pl){mapaZona.removeLayer(pl);});window.zonaPolylines=[];}
+    if(zonaSliderMarker){mapaZona.removeLayer(zonaSliderMarker);zonaSliderMarker=null;}
+}
+
+function renderZonaBase(){
+    limpiarCapasZona();
+    var puntosPorVehiculo={};
+    window.zonaDatos.forEach(function(d){
+        var veh=d.vehiculo||'V1';
+        var col=colorVehiculo(veh);
+        var p=[parseFloat(d.latitud),parseFloat(d.longitud)];
+        if(!puntosPorVehiculo[veh]) puntosPorVehiculo[veh]=[];
+        puntosPorVehiculo[veh].push(p);
+        var fh=extraerFechaHora(d.timestamp_gps||d.fecha_recepcion);
+        var c=L.circleMarker(p,{radius:5,color:col,fillColor:col,fillOpacity:0.7,weight:1.5}).addTo(mapaZona);
+        c.bindPopup('<strong>'+veh+'</strong><br>'+fh.fecha+'<br>'+fh.hora);
+        window.zonaCircles.push(c);
+    });
+    Object.keys(puntosPorVehiculo).forEach(function(veh){
+        var pl=L.polyline(puntosPorVehiculo[veh],{color:colorVehiculo(veh),weight:3,opacity:0.65}).addTo(mapaZona);
+        window.zonaPolylines.push(pl);
+    });
+}
+
+function setupZonaSlider(){
+    var veh=document.getElementById('zonaVehSel').value;
+    window.zonaFiltrados=veh
+        ? window.zonaDatos.filter(function(d){return (d.vehiculo||'V1')===veh;})
+        : window.zonaDatos;
+    var slider=document.getElementById('zonaSlider');
+    slider.min=0;
+    slider.max=Math.max(0,window.zonaFiltrados.length-1);
+    slider.value=slider.max;
+    document.getElementById('zonaSliderCard').style.display=window.zonaFiltrados.length>0?'block':'none';
+    if(window.zonaFiltrados.length>0) renderZonaAt(window.zonaFiltrados.length-1);
+}
+
+function onZonaVehChange(){setupZonaSlider();}
 
 function onZonaSlider(){
     renderZonaAt(parseInt(document.getElementById('zonaSlider').value));
 }
 
 function renderZonaAt(idx){
-    if(!window.zonaDatos||!window.zonaDatos.length) return;
-    if(window.zonaCircles){window.zonaCircles.forEach(function(c){mapaZona.removeLayer(c);});}
-    window.zonaCircles=[];
-    if(window.zonaPolylines){window.zonaPolylines.forEach(function(pl){mapaZona.removeLayer(pl);});}
-    window.zonaPolylines=[];
-    var puntosPorVehiculo={};
-    for(var i=0;i<=idx;i++){
-        var d=window.zonaDatos[i];
-        var veh=d.vehiculo||'V1';
-        var col=colorVehiculo(veh);
-        var p=[parseFloat(d.latitud),parseFloat(d.longitud)];
-        if(!puntosPorVehiculo[veh]) puntosPorVehiculo[veh]=[];
-        puntosPorVehiculo[veh].push(p);
-        var isLast=(i===idx);
-        var c=L.circleMarker(p,{
-            radius:isLast?9:5,
-            color:isLast?'#fff':col,
-            fillColor:col,
-            fillOpacity:isLast?1:0.75,
-            weight:isLast?2.5:1.5
-        }).addTo(mapaZona);
-        var fh=extraerFechaHora(d.timestamp_gps||d.fecha_recepcion);
-        c.bindPopup('<strong>'+veh+'</strong><br>'+fh.fecha+'<br>'+fh.hora);
-        if(isLast) c.openPopup();
-        window.zonaCircles.push(c);
-    }
-    Object.keys(puntosPorVehiculo).forEach(function(veh){
-        var pl=L.polyline(puntosPorVehiculo[veh],{color:colorVehiculo(veh),weight:3,opacity:0.7}).addTo(mapaZona);
-        window.zonaPolylines.push(pl);
-    });
-    var cur=window.zonaDatos[idx];
-    var cfh=extraerFechaHora(cur.timestamp_gps||cur.fecha_recepcion);
-    document.getElementById('zonaSliderLabel').textContent=(idx+1)+'/'+window.zonaDatos.length;
-    document.getElementById('zonaSliderInfo').textContent=(cur.vehiculo||'V1')+' · '+cfh.hora;
-    mapaZona.panTo([parseFloat(cur.latitud),parseFloat(cur.longitud)]);
+    if(!window.zonaFiltrados||!window.zonaFiltrados.length) return;
+    if(zonaSliderMarker){mapaZona.removeLayer(zonaSliderMarker);zonaSliderMarker=null;}
+    var cur=window.zonaFiltrados[idx];
+    var veh=cur.vehiculo||'V1';
+    var col=colorVehiculo(veh);
+    var p=[parseFloat(cur.latitud),parseFloat(cur.longitud)];
+    var fh=extraerFechaHora(cur.timestamp_gps||cur.fecha_recepcion);
+    zonaSliderMarker=L.circleMarker(p,{radius:10,color:'#fff',fillColor:col,fillOpacity:1,weight:3}).addTo(mapaZona);
+    zonaSliderMarker.bindPopup('<strong>'+veh+'</strong><br>'+fh.fecha+'<br>'+fh.hora).openPopup();
+    document.getElementById('zonaSliderLabel').textContent=(idx+1)+'/'+window.zonaFiltrados.length;
+    document.getElementById('zonaSliderInfo').textContent=veh+' · '+fh.hora;
+    mapaZona.panTo(p);
 }
 
 function limpiarZona(){
     if(zonaMarcador&&mapaZona){mapaZona.removeLayer(zonaMarcador);zonaMarcador=null;}
     if(zonaCircle&&mapaZona){mapaZona.removeLayer(zonaCircle);zonaCircle=null;}
-    if(window.zonaCircles){window.zonaCircles.forEach(function(c){mapaZona.removeLayer(c);});window.zonaCircles=[];}
-    if(window.zonaPolylines){window.zonaPolylines.forEach(function(pl){mapaZona.removeLayer(pl);});window.zonaPolylines=[];}
+    limpiarCapasZona();
     window.zonaDatos=[];
+    window.zonaFiltrados=[];
     document.getElementById('zonaSliderCard').style.display='none';
+    document.getElementById('zonaVehSel').innerHTML='<option value="">Todos los vehículos</option>';
     zonaCenter=null;
     document.getElementById('zonaLat').textContent='---';
     document.getElementById('zonaLon').textContent='---';
