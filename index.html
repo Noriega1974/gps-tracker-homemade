@@ -1615,7 +1615,6 @@ function renderZonaAt(idx){
     zonaSliderMarker.bindPopup('<strong>'+veh+'</strong><br>'+fh.fecha+'<br>'+fh.hora).openPopup();
     document.getElementById('zonaSliderLabel').textContent=(idx+1)+'/'+window.zonaFiltrados.length;
     document.getElementById('zonaSliderInfo').textContent=veh+' · '+fh.hora;
-    mapaZona.panTo(p);
 }
 
 function limpiarZona(){
