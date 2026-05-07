@@ -844,7 +844,7 @@
         <div class="view-title">
             <div class="view-title-left">
                 <div class="view-title-text">Ubicación en Tiempo Real</div>
-                <div class="view-title-sub">live stream · websocket</div>
+                <div class="view-title-sub">live stream</div>
             </div>
             <span class="status-badge off" id="statusBadge">
                 <span class="status-dot"></span>
@@ -1144,6 +1144,7 @@ function conectarWS(){
     ws.onclose=function(){setStatus(false);setTimeout(conectarWS,3000);};
 }
 
+var obdUltimoConocido={};
 function actualizarGPS(d){
     var vid=d.vehiculo||'V1';
     var fh=extraerFechaHora(d.timestamp_gps);
@@ -1158,14 +1159,19 @@ function actualizarGPS(d){
         card.innerHTML='<div style="font-weight:700;color:'+color+';margin-bottom:8px;font-size:13px;">'+esc(vid)+'</div><div class="gps-grid" id="vgrid-'+vid+'"></div>';
         panel.appendChild(card);
     }
+    if(!obdUltimoConocido[vid])obdUltimoConocido[vid]={rpm:null,combustible_hoy:null,temp_motor:null};
+    if(d.rpm!=null)obdUltimoConocido[vid].rpm=d.rpm;
+    if(d.combustible_hoy!=null)obdUltimoConocido[vid].combustible_hoy=d.combustible_hoy;
+    if(d.temp_motor!=null)obdUltimoConocido[vid].temp_motor=d.temp_motor;
+    var obd=obdUltimoConocido[vid];
     document.getElementById('vgrid-'+vid).innerHTML=
         '<div class="gps-item"><span class="gps-item-label">Latitud</span><span class="gps-item-value">'+d.latitud+'</span></div>'+
         '<div class="gps-item"><span class="gps-item-label">Longitud</span><span class="gps-item-value">'+d.longitud+'</span></div>'+
         '<div class="gps-item"><span class="gps-item-label">Fecha</span><span class="gps-item-value">'+fh.fecha+'</span></div>'+
         '<div class="gps-item"><span class="gps-item-label">Hora (COL)</span><span class="gps-item-value">'+fh.hora+'</span></div>'+
-        '<div class="gps-item"><span class="gps-item-label">RPM</span><span class="gps-item-value">'+(d.rpm!=null?d.rpm:'—')+'</span></div>'+
-        '<div class="gps-item"><span class="gps-item-label">Gasolina (L)</span><span class="gps-item-value">'+(d.combustible_hoy!=null?d.combustible_hoy:'—')+'</span></div>'+
-        '<div class="gps-item"><span class="gps-item-label">Temp. Motor</span><span class="gps-item-value">'+(d.temp_motor!=null?d.temp_motor+' °C':'—')+'</span></div>';
+        '<div class="gps-item"><span class="gps-item-label">RPM</span><span class="gps-item-value">'+(obd.rpm!=null?obd.rpm:'—')+'</span></div>'+
+        '<div class="gps-item"><span class="gps-item-label">Gasolina (L)</span><span class="gps-item-value">'+(obd.combustible_hoy!=null?obd.combustible_hoy:'—')+'</span></div>'+
+        '<div class="gps-item"><span class="gps-item-label">Temp. Motor</span><span class="gps-item-value">'+(obd.temp_motor!=null?obd.temp_motor+' °C':'—')+'</span></div>';
 }
 
 /* ═══════════════════════════════════════════════════════

@@ -71,6 +71,7 @@ async function migrateDB() {
         await client.query('ALTER TABLE ubicaciones ADD COLUMN IF NOT EXISTS rpm NUMERIC');
         await client.query('ALTER TABLE ubicaciones ADD COLUMN IF NOT EXISTS combustible_usado NUMERIC');
         await client.query('ALTER TABLE ubicaciones ADD COLUMN IF NOT EXISTS combustible_hoy NUMERIC');
+        await client.query('ALTER TABLE ubicaciones ALTER COLUMN combustible_hoy TYPE DECIMAL(10,3) USING combustible_hoy::DECIMAL(10,3)');
         await client.query('ALTER TABLE ubicaciones ALTER COLUMN latitud DROP NOT NULL');
         await client.query('ALTER TABLE ubicaciones ALTER COLUMN longitud DROP NOT NULL');
         await client.query('ALTER TABLE ubicaciones ALTER COLUMN ip_origen DROP NOT NULL');
@@ -171,6 +172,9 @@ function iniciarUDP() {
                 longitud: data.lon,
                 timestamp_gps: data.time,
                 vehiculo: data.vehiculo,
+                rpm: data.rpm,
+                combustible_hoy: data.fuel_today_l,
+                temp_motor: data.temp_motor,
                 ip_origen: rinfo.address,
                 puerto_origen: rinfo.port,
                 ip_destino: serverIP,
