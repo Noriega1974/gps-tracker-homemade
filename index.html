@@ -914,7 +914,7 @@
             </div>
             <div id="histTableWrap" style="display:none;">
                 <p class="pkt-count" id="histCount">Selecciona un rango de fechas y presiona Filtrar</p>
-                <div class="table-wrap"><table><thead><tr><th>No.</th><th>Vehículo</th><th>Fecha</th><th>Hora (COL)</th><th>Latitud</th><th>Longitud</th></tr></thead><tbody id="histBody"></tbody></table></div>
+                <div class="table-wrap"><table><thead><tr><th>No.</th><th>Vehículo</th><th>Fecha</th><th>Hora (COL)</th><th>Latitud</th><th>Longitud</th><th>RPM</th><th>Gasolina (L)</th><th>Temp. Motor</th></tr></thead><tbody id="histBody"></tbody></table></div>
             </div>
         </div>
     </div>
@@ -975,7 +975,7 @@
                 <svg id="zonaToggleIcon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" width="16" height="16" style="margin-left:auto;transition:transform 0.3s;transform:rotate(-90deg);"><polyline points="6 9 12 15 18 9"/></svg>
             </div>
             <div id="zonaTableWrap" style="display:none;">
-                <div class="table-wrap"><table><thead><tr><th>No.</th><th>Fecha</th><th>Hora (COL)</th><th>Latitud</th><th>Longitud</th><th>Vehículo</th></tr></thead><tbody id="zonaBody"></tbody></table></div>
+                <div class="table-wrap"><table><thead><tr><th>No.</th><th>Fecha</th><th>Hora (COL)</th><th>Latitud</th><th>Longitud</th><th>Vehículo</th><th>RPM</th><th>Gasolina (L)</th><th>Temp. Motor</th></tr></thead><tbody id="zonaBody"></tbody></table></div>
             </div>
         </div>
     </div>
@@ -995,6 +995,7 @@ function setTheme(t){
 }
 function toggleTheme(){setTheme(currentTheme==='light'?'dark':'light');}
 function getCS(v){return getComputedStyle(document.documentElement).getPropertyValue(v).trim();}
+function esc(s){var d=document.createElement('div');d.textContent=String(s);return d.innerHTML;}
 (function(){var h=getColombiaHour();setTheme((h>=18.5||h<6)?'dark':'light');})();
 
 function toggleSidebar(){document.getElementById('sidebar').classList.toggle('open');document.getElementById('overlay').classList.toggle('show');}
@@ -1066,7 +1067,7 @@ function getVehicleState(id){
     if(!vehiculosRT[id]){var col=colorVehiculo(id);vehiculosRT[id]={marcador:null,polyline:L.polyline([],{color:col,weight:5}).addTo(mapa),circles:[],color:col};}
     return vehiculosRT[id];
 }
-function crearIconoVehiculo(id,color){return L.divIcon({className:'',html:'<div style="background:'+color+';color:#fff;border-radius:50%;width:24px;height:24px;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:9px;border:2px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,0.35);">'+id+'</div>',iconSize:[24,24],iconAnchor:[12,12]});}
+function crearIconoVehiculo(id,color){return L.divIcon({className:'',html:'<div style="background:'+color+';color:#fff;border-radius:50%;width:24px;height:24px;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:9px;border:2px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,0.35);">'+esc(id)+'</div>',iconSize:[24,24],iconAnchor:[12,12]});}
 
 // Base path para que las rutas API funcionen tanto en / como en /dev/, /devdaniel/, etc.
 var basePath = (function(){
@@ -1139,6 +1140,7 @@ function conectarWS(){
             actualizarMapa(msg.data.latitud,msg.data.longitud,msg.data.vehiculo||'V1');
         }
     };
+    ws.onerror=function(){ws.close();};
     ws.onclose=function(){setStatus(false);setTimeout(conectarWS,3000);};
 }
 
@@ -1149,18 +1151,21 @@ function actualizarGPS(d){
     var panel=document.getElementById('vehiculosPanel');
     var card=document.getElementById('vcard-'+vid);
     if(!card){
-        panel.innerHTML='';
+        var ph=panel.querySelector('p');if(ph)ph.remove();
         card=document.createElement('div');
         card.id='vcard-'+vid;
         card.style.cssText='border-left:4px solid '+color+';padding:10px 12px;margin-bottom:8px;border-radius:6px;background:var(--surface2,rgba(255,255,255,0.04));';
-        card.innerHTML='<div style="font-weight:700;color:'+color+';margin-bottom:8px;font-size:13px;">'+vid+'</div><div class="gps-grid" id="vgrid-'+vid+'"></div>';
+        card.innerHTML='<div style="font-weight:700;color:'+color+';margin-bottom:8px;font-size:13px;">'+esc(vid)+'</div><div class="gps-grid" id="vgrid-'+vid+'"></div>';
         panel.appendChild(card);
     }
     document.getElementById('vgrid-'+vid).innerHTML=
         '<div class="gps-item"><span class="gps-item-label">Latitud</span><span class="gps-item-value">'+d.latitud+'</span></div>'+
         '<div class="gps-item"><span class="gps-item-label">Longitud</span><span class="gps-item-value">'+d.longitud+'</span></div>'+
         '<div class="gps-item"><span class="gps-item-label">Fecha</span><span class="gps-item-value">'+fh.fecha+'</span></div>'+
-        '<div class="gps-item"><span class="gps-item-label">Hora (COL)</span><span class="gps-item-value">'+fh.hora+'</span></div>';
+        '<div class="gps-item"><span class="gps-item-label">Hora (COL)</span><span class="gps-item-value">'+fh.hora+'</span></div>'+
+        '<div class="gps-item"><span class="gps-item-label">RPM</span><span class="gps-item-value">'+(d.rpm!=null?d.rpm:'—')+'</span></div>'+
+        '<div class="gps-item"><span class="gps-item-label">Gasolina (L)</span><span class="gps-item-value">'+(d.combustible_hoy!=null?d.combustible_hoy:'—')+'</span></div>'+
+        '<div class="gps-item"><span class="gps-item-label">Temp. Motor</span><span class="gps-item-value">'+(d.temp_motor!=null?d.temp_motor+' °C':'—')+'</span></div>';
 }
 
 /* ═══════════════════════════════════════════════════════
@@ -1342,7 +1347,7 @@ function renderHistorico(datos){
             var fh=extraerFechaHora(d.timestamp_gps||d.fecha_recepcion);
             var row=document.createElement('tr');
             var vid=d.vehiculo||'V1';var vcol=colorVehiculo(vid);
-            row.innerHTML='<td>'+(idx+1)+'</td><td><span style="color:'+vcol+';font-weight:700;">'+vid+'</span></td><td>'+fh.fecha+'</td><td>'+fh.hora+'</td><td>'+d.latitud+'</td><td>'+d.longitud+'</td>';
+            row.innerHTML='<td>'+(idx+1)+'</td><td><span style="color:'+vcol+';font-weight:700;">'+esc(vid)+'</span></td><td>'+fh.fecha+'</td><td>'+fh.hora+'</td><td>'+d.latitud+'</td><td>'+d.longitud+'</td><td>'+(d.rpm!=null?d.rpm:'—')+'</td><td>'+(d.combustible_hoy!=null?d.combustible_hoy:'—')+'</td><td>'+(d.temp_motor!=null?d.temp_motor+' °C':'—')+'</td>';
             row.style.cursor='pointer';
             var lat=parseFloat(d.latitud),lng=parseFloat(d.longitud);
             if(!isNaN(lat)&&!isNaN(lng)){row.onclick=function(){
@@ -1541,7 +1546,7 @@ function renderZona(datos,fitMap){
     datos.forEach(function(d,i){
         var fh=extraerFechaHora(d.timestamp_gps||d.fecha_recepcion);
         var row=document.createElement('tr');
-        row.innerHTML='<td>'+(i+1)+'</td><td>'+fh.fecha+'</td><td>'+fh.hora+'</td><td>'+d.latitud+'</td><td>'+d.longitud+'</td><td>'+(d.vehiculo||'V1')+'</td>';
+        row.innerHTML='<td>'+(i+1)+'</td><td>'+fh.fecha+'</td><td>'+fh.hora+'</td><td>'+d.latitud+'</td><td>'+d.longitud+'</td><td>'+esc(d.vehiculo||'V1')+'</td><td>'+(d.rpm!=null?d.rpm:'—')+'</td><td>'+(d.combustible_hoy!=null?d.combustible_hoy:'—')+'</td><td>'+(d.temp_motor!=null?d.temp_motor+' °C':'—')+'</td>';
         tbody.appendChild(row);
     });
 
@@ -1575,7 +1580,7 @@ function renderZonaBase(){
         puntosPorVehiculo[veh].push(p);
         var fh=extraerFechaHora(d.timestamp_gps||d.fecha_recepcion);
         var c=L.circleMarker(p,{radius:5,color:col,fillColor:col,fillOpacity:0.7,weight:1.5}).addTo(mapaZona);
-        c.bindPopup('<strong>'+veh+'</strong><br>'+fh.fecha+'<br>'+fh.hora);
+        c.bindPopup('<strong>'+esc(veh)+'</strong><br>'+fh.fecha+'<br>'+fh.hora);
         window.zonaCircles.push(c);
     });
     Object.keys(puntosPorVehiculo).forEach(function(veh){
@@ -1621,7 +1626,7 @@ function renderZonaAt(idx){
     var p=[parseFloat(cur.latitud),parseFloat(cur.longitud)];
     var fh=extraerFechaHora(cur.timestamp_gps||cur.fecha_recepcion);
     zonaSliderMarker=L.circleMarker(p,{radius:10,color:'#fff',fillColor:col,fillOpacity:1,weight:3}).addTo(mapaZona);
-    zonaSliderMarker.bindPopup('<strong>'+veh+'</strong><br>'+fh.fecha+'<br>'+fh.hora);
+    zonaSliderMarker.bindPopup('<strong>'+esc(veh)+'</strong><br>'+fh.fecha+'<br>'+fh.hora);
     document.getElementById('zonaSliderLabel').textContent=(idx+1)+'/'+window.zonaFiltrados.length;
     document.getElementById('zonaSliderInfo').textContent=veh+' · '+fh.hora;
 }
