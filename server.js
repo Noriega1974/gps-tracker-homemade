@@ -6,7 +6,6 @@ const WebSocket = require('ws');
 const { Pool } = require('pg');
 const path = require('path');
 const os = require('os');
-const crypto = require('crypto');
 
 const UDP_PORT = parseInt(process.env.UDP_PORT) || 5005;
 const WEB_PORT = parseInt(process.env.PORT) || 8080;
@@ -68,7 +67,7 @@ async function initDB() {
 async function migrateDB() {
     const client = await pool.connect();
     try {
-        await client.query('ALTER TABLE ubicaciones ADD COLUMN IF NOT EXISTS usuario TEXT');
+        await client.query('ALTER TABLE ubicaciones DROP COLUMN IF EXISTS usuario');
         await client.query('ALTER TABLE ubicaciones ADD COLUMN IF NOT EXISTS rpm NUMERIC');
         await client.query('ALTER TABLE ubicaciones ADD COLUMN IF NOT EXISTS combustible_usado NUMERIC');
         await client.query('ALTER TABLE ubicaciones ADD COLUMN IF NOT EXISTS combustible_hoy NUMERIC');
@@ -76,6 +75,7 @@ async function migrateDB() {
         await client.query('ALTER TABLE ubicaciones ALTER COLUMN longitud DROP NOT NULL');
         await client.query('ALTER TABLE ubicaciones ALTER COLUMN ip_origen DROP NOT NULL');
         await client.query('ALTER TABLE ubicaciones ADD COLUMN IF NOT EXISTS vehiculo TEXT');
+        await client.query('ALTER TABLE ubicaciones ADD COLUMN IF NOT EXISTS temp_motor INTEGER');
         await client.query("UPDATE ubicaciones SET vehiculo = 'V1' WHERE vehiculo IS NULL");
         const { rows } = await client.query(
             "SELECT 1 FROM information_schema.columns WHERE table_name='ubicaciones' AND column_name='protocolo'"
@@ -94,8 +94,8 @@ async function migrateDB() {
 
 async function guardarUbicacion(data, ipOrigen) {
     try {
-        const sql = 'INSERT INTO ubicaciones (latitud, longitud, timestamp_gps, ip_origen, vehiculo) VALUES ($1, $2, $3, $4, $5) RETURNING id';
-        const valores = [data.lat, data.lon, data.time, ipOrigen, data.vehiculo];
+        const sql = 'INSERT INTO ubicaciones (latitud, longitud, timestamp_gps, ip_origen, vehiculo, rpm, combustible_hoy, temp_motor) VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING id';
+        const valores = [data.lat, data.lon, data.time, ipOrigen, data.vehiculo, data.rpm, data.fuel_today_l, data.temp_motor];
         const result = await pool.query(sql, valores);
         return result.rows[0].id;
     } catch (err) {
@@ -133,7 +133,10 @@ function parsearDatos(raw) {
             lat: lat,
             lon: lon,
             time: String(time).trim(),
-            vehiculo: String(payload.vehiculo || 'V1').trim()
+            vehiculo: String(payload.vehiculo || 'V1').trim(),
+            rpm: (payload.rpm !== null && payload.rpm !== undefined) ? parseFloat(payload.rpm) : null,
+            fuel_today_l: (payload.fuel_today_l !== null && payload.fuel_today_l !== undefined) ? parseFloat(payload.fuel_today_l) : null,
+            temp_motor: (payload.temp_motor !== null && payload.temp_motor !== undefined) ? parseInt(payload.temp_motor) : null
         };
     } catch (e) {
         console.error('[PARSE] Error al procesar paquete:', e.message);
@@ -211,125 +214,10 @@ function iniciarWeb() {
         res.send(cachedHtml);
     });
 
-    // ── Auth ─────────────────────────────────────────────────────────
-    const UPLOAD_SECRET = process.env.UPLOAD_PASSWORD || '';
-
-    function generarToken(usuario) {
-        const ts = Date.now();
-        const sig = crypto.createHmac('sha256', UPLOAD_SECRET).update(usuario + ts).digest('hex');
-        return Buffer.from(JSON.stringify({ usuario, ts, sig })).toString('base64url');
-    }
-
-    function verificarToken(token) {
-        try {
-            const { usuario, ts, sig } = JSON.parse(Buffer.from(token, 'base64url').toString());
-            const expected = crypto.createHmac('sha256', UPLOAD_SECRET).update(usuario + ts).digest('hex');
-            return sig === expected && (Date.now() - ts) < 86400000 ? usuario : null;
-        } catch { return null; }
-    }
-
-    function autenticar(req, res, next) {
-        const auth = req.headers['authorization'] || '';
-        const token = auth.startsWith('Bearer ') ? auth.slice(7) : null;
-        const usuario = token ? verificarToken(token) : null;
-        if (!usuario) return res.status(401).json({ error: 'No autorizado' });
-        req.usuario = usuario;
-        next();
-    }
-
-    app.post('/api/login', express.json({ limit: '1mb' }), function(req, res) {
-        if (!UPLOAD_SECRET) return res.status(503).json({ error: 'UPLOAD_PASSWORD no configurado en el servidor' });
-        const { password, usuario } = req.body || {};
-        if (!password || password !== UPLOAD_SECRET)
-            return res.status(401).json({ error: 'Contraseña incorrecta' });
-        if (!usuario || !usuario.trim())
-            return res.status(400).json({ error: 'Nombre de usuario requerido' });
-        res.json({ token: generarToken(usuario.trim()), usuario: usuario.trim() });
-    });
-
-    // ── CSV Parser ────────────────────────────────────────────────────
-    function parsearLineaCSV(line) {
-        const cols = []; let cur = ''; let inQ = false;
-        for (const ch of line) {
-            if (ch === '"') { inQ = !inQ; }
-            else if (ch === ',' && !inQ) { cols.push(cur); cur = ''; }
-            else cur += ch;
-        }
-        cols.push(cur);
-        return cols;
-    }
-
-    function parsearCSVReporte(csvText, usuario, fecha) {
-        const lines = csvText.split('\n').filter(l => l.trim());
-        if (lines.length < 2) return [];
-
-        const header = parsearLineaCSV(lines[0]);
-        const idxRpm  = header.findIndex(h => h.replace(/"/g,'').trim().startsWith('Revoluciones del motor (rpm)'));
-        const idxComb = header.findIndex(h => h.replace(/"/g,'').trim() === 'Combustible usado (L)');
-        const idxHoy  = header.findIndex(h => h.replace(/"/g,'').trim().startsWith('Combustible usado (Hoy)'));
-
-        if (idxRpm === -1 || idxComb === -1 || idxHoy === -1) return [];
-
-        const registros = [];
-        let lastComb = null, lastHoy = null;
-
-        for (let i = 1; i < lines.length; i++) {
-            const cols = lines[i].split(',');
-            const time = (cols[0] || '').trim();
-            if (!time) continue;
-
-            const rpm  = parseFloat(cols[idxRpm]);
-            const comb = parseFloat(cols[idxComb]);
-            const hoy  = parseFloat(cols[idxHoy]);
-
-            if (!isNaN(comb)) lastComb = comb;
-            if (!isNaN(hoy))  lastHoy  = hoy;
-
-            if (!isNaN(rpm) && lastComb !== null) {
-                registros.push({
-                    timestamp: fecha + ' ' + time,
-                    usuario,
-                    rpm,
-                    combustible_usado: lastComb,
-                    combustible_hoy:   lastHoy
-                });
-            }
-        }
-        return registros;
-    }
-
-    app.post('/api/upload-reporte', express.text({ type: '*/*', limit: '10mb' }), autenticar, async function(req, res) {
-        const csvText = req.body;
-        const fecha = (req.headers['x-fecha'] || new Date().toISOString().split('T')[0]);
-
-        if (!csvText || typeof csvText !== 'string')
-            return res.status(400).json({ error: 'CSV vacio o invalido' });
-
-        const registros = parsearCSVReporte(csvText, req.usuario, fecha);
-        if (registros.length === 0)
-            return res.status(400).json({ error: 'No se encontraron columnas RPM/combustible en el CSV' });
-
-        let insertados = 0;
-        for (const r of registros) {
-            try {
-                await pool.query(
-                    'INSERT INTO ubicaciones (latitud, longitud, ip_origen, timestamp_gps, usuario, rpm, combustible_usado, combustible_hoy) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)',
-                    [null, null, null, r.timestamp, r.usuario, r.rpm, r.combustible_usado, r.combustible_hoy]
-                );
-                insertados++;
-            } catch (err) {
-                console.error('[UPLOAD] Error insertando:', err.message);
-            }
-        }
-
-        console.log(`[UPLOAD] ${req.usuario} subio ${insertados}/${registros.length} registros (${fecha})`);
-        res.json({ ok: true, insertados, total: registros.length });
-    });
-
     // Ultimo punto (para real-time al cargar)
     app.get('/api/ubicaciones', async function(req, res) {
         try {
-            const limit = Math.min(parseInt(req.query.limit) || 50, 500);
+            const limit = Math.min(parseInt(req.query.limit) || 50, 2000);
             const result = await pool.query(
                 'SELECT * FROM ubicaciones WHERE latitud IS NOT NULL AND longitud IS NOT NULL ORDER BY id DESC LIMIT $1', [limit]
             );
@@ -398,7 +286,7 @@ function iniciarWeb() {
             }
 
             var where = conditions.length > 0 ? ' WHERE ' + conditions.join(' AND ') : '';
-            var sql = 'SELECT * FROM ubicaciones' + where + ' ORDER BY id DESC LIMIT 500';
+            var sql = 'SELECT * FROM ubicaciones' + where + ' ORDER BY id DESC LIMIT 2000';
 
             console.log('[HIST] SQL:', sql, '| Params:', params);
             var result = await pool.query(sql, params);
@@ -410,15 +298,20 @@ function iniciarWeb() {
     });
 
     // Filtro por zona geografica — devuelve registros dentro de un radio (metros) desde un punto dado
+    // Params: lat, lon, radio (metros), vehiculo (opcional)
     app.get('/api/zona', async function(req, res) {
         try {
-            var lat   = parseFloat(req.query.lat);
-            var lon   = parseFloat(req.query.lon);
-            var radio = parseFloat(req.query.radio) || 200;
+            var lat      = parseFloat(req.query.lat);
+            var lon      = parseFloat(req.query.lon);
+            var radio    = parseFloat(req.query.radio) || 200;
+            var vehiculo = req.query.vehiculo || null;
 
             if (isNaN(lat) || isNaN(lon)) {
                 return res.status(400).json({ error: 'Coordenadas invalidas' });
             }
+
+            var params = [lat, lon, radio];
+            var idx = 4;
 
             // Haversine en SQL. LEAST(1.0,...) evita errores de dominio en acos por imprecision float.
             var distExpr =
@@ -428,9 +321,17 @@ function iniciarWeb() {
                 '  sin(radians($1)) * sin(radians(latitud::float))' +
                 ')))';
 
-            var sql = 'SELECT * FROM ubicaciones WHERE ' + distExpr + ' <= $3 ORDER BY id ASC LIMIT 500';
-            console.log('[ZONA] SQL:', sql, '| Params:', [lat, lon, radio]);
-            var result = await pool.query(sql, [lat, lon, radio]);
+            var conditions = ['latitud IS NOT NULL', 'longitud IS NOT NULL', distExpr + ' <= $3'];
+
+            if (vehiculo) {
+                conditions.push('vehiculo = $' + idx);
+                params.push(vehiculo);
+                idx++;
+            }
+
+            var sql = 'SELECT * FROM ubicaciones WHERE ' + conditions.join(' AND ') + ' ORDER BY id ASC LIMIT 2000';
+            console.log('[ZONA] SQL:', sql, '| Params:', params);
+            var result = await pool.query(sql, params);
             res.json(result.rows);
         } catch (err) {
             console.error('[ZONA] Error:', err.message);

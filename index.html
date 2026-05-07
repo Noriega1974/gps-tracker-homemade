@@ -320,10 +320,6 @@
             max-width:1180px;
             margin:0 auto;
         }
-        /* Upload view stays narrow for comfort */
-        #view-upload{max-width:640px;margin-left:auto;margin-right:auto;}
-        #view-upload .card{padding:24px;}
-        #view-upload .upload-zone{padding:32px 20px;}
 
         .view{display:none;animation:fadeIn 0.3s ease;}
         .view.active{display:block;}
@@ -710,59 +706,17 @@
             background:var(--accent-lt);
             border-radius:6px;
         }
-
-        /* ══════════ UPLOAD ══════════ */
-        .upload-zone{
-            border:1.5px dashed var(--accent-border);
-            border-radius:14px;
-            padding:40px 24px;
-            text-align:center;
-            cursor:pointer;
-            transition:border 0.2s, background 0.2s, transform 0.2s;
-            margin-bottom:14px;
-            background:var(--bg-elev);
-            backdrop-filter:blur(10px);
-            -webkit-backdrop-filter:blur(10px);
-        }
-        .upload-zone:hover,.upload-zone.drag{
-            border-color:var(--accent);
-            background:var(--accent-lt);
-            transform:translateY(-1px);
-        }
-        .upload-zone svg{
-            margin-bottom:12px;
-            color:var(--txt3);
-            transition:color 0.2s;
-        }
-        .upload-zone:hover svg,.upload-zone.drag svg{color:var(--accent);}
-        .upload-zone p{
-            font-size:13.5px;color:var(--txt2);
-            font-weight:500;
-        }
-        .upload-zone .file-name{
-            font-size:13px;font-weight:600;
-            color:var(--accent);
-            margin-top:10px;
-            font-family:'JetBrains Mono',monospace;
-        }
-        .upload-result{
+        .replay-row{
+            display:flex;align-items:center;gap:12px;
             padding:12px 16px;
-            border-radius:10px;
-            font-size:13px;font-weight:500;
-            margin-top:12px;
-            display:none;
-            border:1px solid transparent;
+            background:var(--bg-elev);
+            border:1px solid var(--brd-lt);
+            border-radius:12px;
         }
-        .upload-result.ok{
-            background:rgba(82,181,141,0.08);
-            color:var(--status-on);
-            border-color:rgba(82,181,141,0.22);
-        }
-        .upload-result.err{
-            background:rgba(212,106,116,0.08);
-            color:var(--alert);
-            border-color:rgba(212,106,116,0.22);
-        }
+        .replay-row input[type="range"]{flex:1;accent-color:var(--accent);cursor:pointer;}
+        .replay-counter{font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:600;color:var(--accent);min-width:52px;text-align:center;}
+        .replay-info{font-size:12px;color:var(--txt2);min-width:110px;text-align:right;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+
 
         .user-badge{
             display:flex;align-items:center;gap:11px;
@@ -848,9 +802,6 @@
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="3"/><line x1="12" y1="2" x2="12" y2="9"/><line x1="12" y1="15" x2="12" y2="22"/><line x1="2" y1="12" x2="9" y2="12"/><line x1="15" y1="12" x2="22" y2="12"/></svg>
             Filtro por Zona
         </div>
-        <div class="side-item" onclick="showView('upload',this)">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-            Carga de Datos
         </div>
     </div>
 
@@ -963,59 +914,7 @@
             </div>
             <div id="histTableWrap" style="display:none;">
                 <p class="pkt-count" id="histCount">Selecciona un rango de fechas y presiona Filtrar</p>
-                <div class="table-wrap"><table><thead><tr><th>No.</th><th>Vehículo</th><th>Fecha</th><th>Hora (COL)</th><th>Latitud</th><th>Longitud</th></tr></thead><tbody id="histBody"></tbody></table></div>
-            </div>
-        </div>
-    </div>
-
-    <!-- ─── UPLOAD ─── -->
-    <div class="view" id="view-upload">
-        <div class="view-title">
-            <div class="view-title-left">
-                <div class="view-title-text">Carga de Datos</div>
-                <div class="view-title-sub">importar reporte diario · csv</div>
-            </div>
-        </div>
-
-        <div class="card" id="uploadLoginCard">
-            <div class="card-title">Acceso Operadores</div>
-            <div class="form-field">
-                <label>Tu nombre</label>
-                <input type="text" id="loginUsuario" placeholder="Ej: Jose Noriega" autocomplete="username">
-            </div>
-            <div class="form-field">
-                <label>Contraseña de la empresa</label>
-                <input type="password" id="loginPassword" placeholder="Contraseña asignada" autocomplete="current-password">
-            </div>
-            <div class="upload-result" id="loginError"></div>
-            <div class="filter-bar" style="margin-bottom:0;">
-                <button class="filter-btn" onclick="loginUpload()">Ingresar</button>
-            </div>
-        </div>
-
-        <div id="uploadPanel" style="display:none;">
-            <div class="card">
-                <div class="user-badge">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" width="18" height="18"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>
-                    <span id="uploadUserLabel">Operador</span>
-                    <button class="filter-btn secondary" style="margin-left:auto;padding:5px 12px;font-size:12px;" onclick="logoutUpload()">Cerrar sesión</button>
-                </div>
-                <div class="card-title">Subir Reporte Diario (CSV)</div>
-                <div class="upload-zone" id="uploadZone" onclick="document.getElementById('csvFileInput').click()" ondragover="uploadDragOver(event)" ondragleave="uploadDragLeave(event)" ondrop="uploadDrop(event)">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" width="40" height="40"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-                    <p>Arrastrá el archivo CSV aquí o hacé clic para seleccionarlo</p>
-                    <div class="file-name" id="csvFileName"></div>
-                </div>
-                <input type="file" id="csvFileInput" accept=".csv" style="display:none;" onchange="csvFileSelected(this)">
-                <div class="loading-msg" id="uploadLoading">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" width="18" height="18"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>
-                    <span>Procesando CSV...</span>
-                </div>
-                <div class="filter-bar" style="margin-bottom:0;">
-                    <button class="filter-btn" id="btnSubirCSV" onclick="subirCSV()" disabled>Subir Reporte</button>
-                    <button class="filter-btn secondary" onclick="limpiarUpload()">Limpiar</button>
-                </div>
-                <div class="upload-result" id="uploadResult"></div>
+                <div class="table-wrap"><table><thead><tr><th>No.</th><th>Vehículo</th><th>Fecha</th><th>Hora (COL)</th><th>Latitud</th><th>Longitud</th><th>RPM</th><th>Gasolina (L)</th><th>Temp. Motor</th></tr></thead><tbody id="histBody"></tbody></table></div>
             </div>
         </div>
     </div>
@@ -1049,7 +948,6 @@
                 <span>Consultando registros...</span>
             </div>
             <div class="filter-bar">
-                <button class="filter-btn" id="btnFiltrarZona" onclick="filtrarZona()" disabled>Buscar en toda la historia</button>
                 <button class="filter-btn secondary" onclick="limpiarZona()">Limpiar</button>
             </div>
             <p class="pkt-count" id="zonaCount">Haz clic en el mapa para definir el centro de la zona</p>
@@ -1057,13 +955,27 @@
 
         <div class="card map-card map-wrap"><div id="mapaZona"></div></div>
 
+        <div class="card" id="zonaSliderCard" style="display:none;">
+            <div class="card-title">Reproducir ruta</div>
+            <div style="margin-bottom:12px;">
+                <select id="zonaVehSel" onchange="onZonaVehChange()" style="width:100%;padding:6px 10px;border-radius:6px;border:1px solid var(--border,#444);background:var(--input-bg,#1a1a2e);color:var(--text,#fff);font-size:13px;">
+                    <option value="">Todos los vehículos</option>
+                </select>
+            </div>
+            <div class="replay-row">
+                <span class="replay-counter" id="zonaSliderLabel">0/0</span>
+                <input type="range" id="zonaSlider" min="0" max="0" value="0" oninput="onZonaSlider()">
+                <span class="replay-info" id="zonaSliderInfo"></span>
+            </div>
+        </div>
+
         <div class="card">
             <div class="card-title" style="cursor:pointer;user-select:none;" onclick="toggleZonaTable()">
                 Registros encontrados en Zona
                 <svg id="zonaToggleIcon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" width="16" height="16" style="margin-left:auto;transition:transform 0.3s;transform:rotate(-90deg);"><polyline points="6 9 12 15 18 9"/></svg>
             </div>
             <div id="zonaTableWrap" style="display:none;">
-                <div class="table-wrap"><table><thead><tr><th>No.</th><th>Fecha</th><th>Hora (COL)</th><th>Latitud</th><th>Longitud</th></tr></thead><tbody id="zonaBody"></tbody></table></div>
+                <div class="table-wrap"><table><thead><tr><th>No.</th><th>Fecha</th><th>Hora (COL)</th><th>Latitud</th><th>Longitud</th><th>Vehículo</th><th>RPM</th><th>Gasolina (L)</th><th>Temp. Motor</th></tr></thead><tbody id="zonaBody"></tbody></table></div>
             </div>
         </div>
     </div>
@@ -1083,6 +995,7 @@ function setTheme(t){
 }
 function toggleTheme(){setTheme(currentTheme==='light'?'dark':'light');}
 function getCS(v){return getComputedStyle(document.documentElement).getPropertyValue(v).trim();}
+function esc(s){var d=document.createElement('div');d.textContent=String(s);return d.innerHTML;}
 (function(){var h=getColombiaHour();setTheme((h>=18.5||h<6)?'dark':'light');})();
 
 function toggleSidebar(){document.getElementById('sidebar').classList.toggle('open');document.getElementById('overlay').classList.toggle('show');}
@@ -1098,6 +1011,12 @@ function showView(name,el){
             mapaHist=L.map('mapaHist').setView(ultimoPunto||[10.9685,-74.7813],13);
             L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{attribution:'&copy; OpenStreetMap'}).addTo(mapaHist);
             rutaHistPolyline=L.polyline([],{color:getCS('--route'),weight:5}).addTo(mapaHist);
+            var hoy=new Date().toLocaleDateString('en-CA');
+            document.getElementById('histFechaDesde').value=hoy;
+            document.getElementById('histFechaHasta').value=hoy;
+            document.getElementById('histHoraDesde').value='00:00';
+            document.getElementById('histHoraHasta').value='23:59';
+            checkFiltroListo();
             mapaHistInit=true;
         },150);
     }
@@ -1105,12 +1024,11 @@ function showView(name,el){
         setTimeout(function(){
             mapaZona=L.map('mapaZona').setView(ultimoPunto||[10.9685,-74.7813],13);
             L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{attribution:'&copy; OpenStreetMap'}).addTo(mapaZona);
-            zonaPolyline=L.polyline([],{color:getCS('--marker'),weight:5}).addTo(mapaZona);
             mapaZona.on('click',function(e){
                 zonaCenter=[e.latlng.lat,e.latlng.lng];
                 actualizarZonaVisual();
                 actualizarCoordZona();
-                checkZonaLista();
+                filtrarZona(true);
             });
             mapaZonaInit=true;
         },150);
@@ -1149,7 +1067,7 @@ function getVehicleState(id){
     if(!vehiculosRT[id]){var col=colorVehiculo(id);vehiculosRT[id]={marcador:null,polyline:L.polyline([],{color:col,weight:5}).addTo(mapa),circles:[],color:col};}
     return vehiculosRT[id];
 }
-function crearIconoVehiculo(id,color){return L.divIcon({className:'',html:'<div style="background:'+color+';color:#fff;border-radius:50%;width:24px;height:24px;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:9px;border:2px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,0.35);">'+id+'</div>',iconSize:[24,24],iconAnchor:[12,12]});}
+function crearIconoVehiculo(id,color){return L.divIcon({className:'',html:'<div style="background:'+color+';color:#fff;border-radius:50%;width:24px;height:24px;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:9px;border:2px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,0.35);">'+esc(id)+'</div>',iconSize:[24,24],iconAnchor:[12,12]});}
 
 // Base path para que las rutas API funcionen tanto en / como en /dev/, /devdaniel/, etc.
 var basePath = (function(){
@@ -1222,6 +1140,7 @@ function conectarWS(){
             actualizarMapa(msg.data.latitud,msg.data.longitud,msg.data.vehiculo||'V1');
         }
     };
+    ws.onerror=function(){ws.close();};
     ws.onclose=function(){setStatus(false);setTimeout(conectarWS,3000);};
 }
 
@@ -1232,18 +1151,21 @@ function actualizarGPS(d){
     var panel=document.getElementById('vehiculosPanel');
     var card=document.getElementById('vcard-'+vid);
     if(!card){
-        panel.innerHTML='';
+        var ph=panel.querySelector('p');if(ph)ph.remove();
         card=document.createElement('div');
         card.id='vcard-'+vid;
         card.style.cssText='border-left:4px solid '+color+';padding:10px 12px;margin-bottom:8px;border-radius:6px;background:var(--surface2,rgba(255,255,255,0.04));';
-        card.innerHTML='<div style="font-weight:700;color:'+color+';margin-bottom:8px;font-size:13px;">'+vid+'</div><div class="gps-grid" id="vgrid-'+vid+'"></div>';
+        card.innerHTML='<div style="font-weight:700;color:'+color+';margin-bottom:8px;font-size:13px;">'+esc(vid)+'</div><div class="gps-grid" id="vgrid-'+vid+'"></div>';
         panel.appendChild(card);
     }
     document.getElementById('vgrid-'+vid).innerHTML=
         '<div class="gps-item"><span class="gps-item-label">Latitud</span><span class="gps-item-value">'+d.latitud+'</span></div>'+
         '<div class="gps-item"><span class="gps-item-label">Longitud</span><span class="gps-item-value">'+d.longitud+'</span></div>'+
         '<div class="gps-item"><span class="gps-item-label">Fecha</span><span class="gps-item-value">'+fh.fecha+'</span></div>'+
-        '<div class="gps-item"><span class="gps-item-label">Hora (COL)</span><span class="gps-item-value">'+fh.hora+'</span></div>';
+        '<div class="gps-item"><span class="gps-item-label">Hora (COL)</span><span class="gps-item-value">'+fh.hora+'</span></div>'+
+        '<div class="gps-item"><span class="gps-item-label">RPM</span><span class="gps-item-value">'+(d.rpm!=null?d.rpm:'—')+'</span></div>'+
+        '<div class="gps-item"><span class="gps-item-label">Gasolina (L)</span><span class="gps-item-value">'+(d.combustible_hoy!=null?d.combustible_hoy:'—')+'</span></div>'+
+        '<div class="gps-item"><span class="gps-item-label">Temp. Motor</span><span class="gps-item-value">'+(d.temp_motor!=null?d.temp_motor+' °C':'—')+'</span></div>';
 }
 
 /* ═══════════════════════════════════════════════════════
@@ -1425,7 +1347,7 @@ function renderHistorico(datos){
             var fh=extraerFechaHora(d.timestamp_gps||d.fecha_recepcion);
             var row=document.createElement('tr');
             var vid=d.vehiculo||'V1';var vcol=colorVehiculo(vid);
-            row.innerHTML='<td>'+(idx+1)+'</td><td><span style="color:'+vcol+';font-weight:700;">'+vid+'</span></td><td>'+fh.fecha+'</td><td>'+fh.hora+'</td><td>'+d.latitud+'</td><td>'+d.longitud+'</td>';
+            row.innerHTML='<td>'+(idx+1)+'</td><td><span style="color:'+vcol+';font-weight:700;">'+esc(vid)+'</span></td><td>'+fh.fecha+'</td><td>'+fh.hora+'</td><td>'+d.latitud+'</td><td>'+d.longitud+'</td><td>'+(d.rpm!=null?d.rpm:'—')+'</td><td>'+(d.combustible_hoy!=null?d.combustible_hoy:'—')+'</td><td>'+(d.temp_motor!=null?d.temp_motor+' °C':'—')+'</td>';
             row.style.cursor='pointer';
             var lat=parseFloat(d.latitud),lng=parseFloat(d.longitud);
             if(!isNaN(lat)&&!isNaN(lng)){row.onclick=function(){
@@ -1538,148 +1460,16 @@ function toggleHistTable(){
 })();
 
 /* ═══════════════════════════════════════════════════════
-   CARGA DE DATOS — AUTH + UPLOAD
-   ═══════════════════════════════════════════════════════ */
-var uploadToken=null,uploadUsuario=null,csvFileObj=null;
-
-function checkUploadAuth(){
-    var saved=null;
-    try{saved=JSON.parse(localStorage.getItem('uploadAuth'));}catch(e){}
-    if(saved&&saved.token&&saved.usuario){
-        uploadToken=saved.token; uploadUsuario=saved.usuario;
-    }
-}
-checkUploadAuth();
-
-function mostrarPanelUpload(){
-    var loggedIn=!!uploadToken;
-    document.getElementById('uploadLoginCard').style.display=loggedIn?'none':'block';
-    document.getElementById('uploadPanel').style.display=loggedIn?'block':'none';
-    if(loggedIn) document.getElementById('uploadUserLabel').textContent='Sesión: '+uploadUsuario;
-}
-
-function loginUpload(){
-    var usuario=document.getElementById('loginUsuario').value.trim();
-    var password=document.getElementById('loginPassword').value;
-    var errEl=document.getElementById('loginError');
-    errEl.style.display='none';
-    if(!usuario||!password){
-        errEl.textContent='Completá todos los campos.'; errEl.className='upload-result err'; errEl.style.display='block'; return;
-    }
-    fetch(basePath+'api/login',{
-        method:'POST',
-        headers:{'Content-Type':'application/json'},
-        body:JSON.stringify({password,usuario})
-    }).then(function(r){return r.json();}).then(function(data){
-        if(data.token){
-            uploadToken=data.token; uploadUsuario=data.usuario;
-            localStorage.setItem('uploadAuth',JSON.stringify({token:data.token,usuario:data.usuario}));
-            document.getElementById('loginPassword').value='';
-            mostrarPanelUpload();
-        } else {
-            errEl.textContent=data.error||'Error al iniciar sesión.'; errEl.className='upload-result err'; errEl.style.display='block';
-        }
-    }).catch(function(){
-        errEl.textContent='Error de conexión.'; errEl.className='upload-result err'; errEl.style.display='block';
-    });
-}
-
-function logoutUpload(){
-    uploadToken=null; uploadUsuario=null; csvFileObj=null;
-    localStorage.removeItem('uploadAuth');
-    document.getElementById('csvFileName').textContent='';
-    document.getElementById('btnSubirCSV').disabled=true;
-    document.getElementById('uploadResult').style.display='none';
-    mostrarPanelUpload();
-}
-
-function csvFileSelected(input){
-    csvFileObj=input.files[0]||null;
-    document.getElementById('csvFileName').textContent=csvFileObj?csvFileObj.name:'';
-    document.getElementById('btnSubirCSV').disabled=!csvFileObj;
-    document.getElementById('uploadResult').style.display='none';
-}
-
-function uploadDragOver(e){e.preventDefault();document.getElementById('uploadZone').classList.add('drag');}
-function uploadDragLeave(e){document.getElementById('uploadZone').classList.remove('drag');}
-function uploadDrop(e){
-    e.preventDefault();
-    document.getElementById('uploadZone').classList.remove('drag');
-    var file=e.dataTransfer.files[0];
-    if(file&&file.name.endsWith('.csv')){
-        csvFileObj=file;
-        document.getElementById('csvFileName').textContent=file.name;
-        document.getElementById('btnSubirCSV').disabled=false;
-        document.getElementById('uploadResult').style.display='none';
-    }
-}
-
-function limpiarUpload(){
-    csvFileObj=null;
-    document.getElementById('csvFileInput').value='';
-    document.getElementById('csvFileName').textContent='';
-    document.getElementById('btnSubirCSV').disabled=true;
-    document.getElementById('uploadResult').style.display='none';
-}
-
-function subirCSV(){
-    if(!csvFileObj||!uploadToken) return;
-    var nombre=csvFileObj.name;
-    var fechaMatch=nombre.match(/(\d{4}-\d{2}-\d{2})/);
-    var fecha=fechaMatch?fechaMatch[1]:new Date().toISOString().split('T')[0];
-
-    document.getElementById('uploadLoading').classList.add('show');
-    document.getElementById('btnSubirCSV').disabled=true;
-    document.getElementById('uploadResult').style.display='none';
-
-    var reader=new FileReader();
-    reader.onload=function(e){
-        fetch(basePath+'api/upload-reporte',{
-            method:'POST',
-            headers:{
-                'Content-Type':'text/csv',
-                'Authorization':'Bearer '+uploadToken,
-                'X-Fecha':fecha
-            },
-            body:e.target.result
-        }).then(function(r){
-            if(r.status===401){logoutUpload();return Promise.reject('Sesión expirada. Iniciá sesión nuevamente.');}
-            return r.json();
-        }).then(function(data){
-            document.getElementById('uploadLoading').classList.remove('show');
-            document.getElementById('btnSubirCSV').disabled=false;
-            var el=document.getElementById('uploadResult');
-            if(data.ok){
-                el.textContent='✓ '+data.insertados+' registros insertados correctamente ('+fecha+')';
-                el.className='upload-result ok';
-            } else {
-                el.textContent='Error: '+(data.error||'Error desconocido');
-                el.className='upload-result err';
-            }
-            el.style.display='block';
-        }).catch(function(msg){
-            document.getElementById('uploadLoading').classList.remove('show');
-            document.getElementById('btnSubirCSV').disabled=false;
-            var el=document.getElementById('uploadResult');
-            el.textContent=typeof msg==='string'?msg:'Error de conexión';
-            el.className='upload-result err'; el.style.display='block';
-        });
-    };
-    reader.readAsText(csvFileObj,'utf-8');
-}
-
-var _origShowView=showView;
-showView=function(name,el){
-    _origShowView(name,el);
-    if(name==='upload') mostrarPanelUpload();
-};
-
-/* ═══════════════════════════════════════════════════════
    FILTRO POR ZONA
    ═══════════════════════════════════════════════════════ */
 var mapaZonaInit=false,mapaZona,zonaPolyline=null;
 var zonaMarcador=null,zonaCircle=null,zonaCenter=null;
 window.zonaCircles=[];
+window.zonaPolylines=[];
+window.zonaDatos=[];
+window.zonaFiltrados=[];
+var zonaDebounceTimer=null;
+var zonaSliderMarker=null;
 
 function toggleZonaTable(){
     var wrap=document.getElementById('zonaTableWrap');
@@ -1704,17 +1494,19 @@ function actualizarCoordZona(){
     document.getElementById('zonaLon').textContent=zonaCenter[1].toFixed(6);
 }
 
-function checkZonaLista(){
-    document.getElementById('btnFiltrarZona').disabled=(zonaCenter===null);
-}
+function checkZonaLista(){}
 
 function onZonaRadioChange(){
     var val=parseInt(document.getElementById('zonaRadio').value)||200;
     document.getElementById('zonaRadioLabel').textContent=val+' m';
     actualizarZonaVisual();
+    if(zonaCenter){
+        clearTimeout(zonaDebounceTimer);
+        zonaDebounceTimer=setTimeout(function(){filtrarZona(false);},600);
+    }
 }
 
-function filtrarZona(){
+function filtrarZona(fitMap){
     if(!zonaCenter) return;
     var radio=parseInt(document.getElementById('zonaRadio').value)||200;
     var url=basePath+'api/zona?lat='+zonaCenter[0]+'&lon='+zonaCenter[1]+'&radio='+radio;
@@ -1722,7 +1514,7 @@ function filtrarZona(){
     document.getElementById('zonaCount').textContent='Consultando...';
     fetch(url).then(function(r){return r.json();}).then(function(data){
         document.getElementById('zonaLoading').classList.remove('show');
-        if(Array.isArray(data)){renderZona(data);}
+        if(Array.isArray(data)){renderZona(data,fitMap);}
         else{document.getElementById('zonaCount').textContent='Error al consultar registros';}
     }).catch(function(err){
         document.getElementById('zonaLoading').classList.remove('show');
@@ -1731,48 +1523,122 @@ function filtrarZona(){
     });
 }
 
-function renderZona(datos){
-    var tbody=document.getElementById('zonaBody');
-    tbody.innerHTML='';
-    if(window.zonaCircles){window.zonaCircles.forEach(function(c){mapaZona.removeLayer(c);});}
-    window.zonaCircles=[];
-    if(zonaPolyline) zonaPolyline.setLatLngs([]);
+function renderZona(datos,fitMap){
+    window.zonaDatos=datos;
     document.getElementById('zonaCount').textContent='Puntos encontrados: '+datos.length;
-    if(datos.length===0) return;
-    var routeColor=getCS('--marker');
-    var todosPuntos=[];
-    for(var i=0;i<datos.length;i++){
-        (function(d,idx){
-            var fh=extraerFechaHora(d.timestamp_gps||d.fecha_recepcion);
-            var p=[parseFloat(d.latitud),parseFloat(d.longitud)];
-            todosPuntos.push(p);
-            var c=L.circleMarker(p,{radius:5,color:routeColor,fillColor:routeColor,fillOpacity:0.85,weight:2}).addTo(mapaZona);
-            c.bindPopup('<strong>Visto el:</strong><br>'+fh.fecha+'<br>'+fh.hora);
-            window.zonaCircles.push(c);
-            var row=document.createElement('tr');
-            row.innerHTML='<td>'+(idx+1)+'</td><td>'+fh.fecha+'</td><td>'+fh.hora+'</td><td>'+d.latitud+'</td><td>'+d.longitud+'</td>';
-            row.style.cursor='pointer';
-            row.onclick=function(){
-                var prev=tbody.querySelector('.selected');if(prev)prev.classList.remove('selected');
-                this.classList.add('selected');
-                mapaZona.setView(p,17);
-                c.openPopup();
-            };
-            tbody.appendChild(row);
-        })(datos[i],i);
+    document.getElementById('zonaBody').innerHTML='';
+    if(datos.length===0){
+        document.getElementById('zonaSliderCard').style.display='none';
+        limpiarCapasZona();
+        return;
     }
-    if(todosPuntos.length>0){
-        var bounds=L.latLngBounds(todosPuntos);
+
+    // Poblar selector de vehículo con los que hay en los datos
+    var vehs=[];
+    datos.forEach(function(d){var v=d.vehiculo||'V1';if(vehs.indexOf(v)===-1)vehs.push(v);});
+    vehs.sort();
+    var sel=document.getElementById('zonaVehSel');
+    sel.innerHTML='<option value="">Todos los vehículos</option>';
+    vehs.forEach(function(v){var o=document.createElement('option');o.value=v;o.textContent=v;sel.appendChild(o);});
+
+    // Tabla
+    var tbody=document.getElementById('zonaBody');
+    datos.forEach(function(d,i){
+        var fh=extraerFechaHora(d.timestamp_gps||d.fecha_recepcion);
+        var row=document.createElement('tr');
+        row.innerHTML='<td>'+(i+1)+'</td><td>'+fh.fecha+'</td><td>'+fh.hora+'</td><td>'+d.latitud+'</td><td>'+d.longitud+'</td><td>'+esc(d.vehiculo||'V1')+'</td><td>'+(d.rpm!=null?d.rpm:'—')+'</td><td>'+(d.combustible_hoy!=null?d.combustible_hoy:'—')+'</td><td>'+(d.temp_motor!=null?d.temp_motor+' °C':'—')+'</td>';
+        tbody.appendChild(row);
+    });
+
+    // Dibujar todos los vehículos como capa base y configurar slider
+    renderZonaBase();
+    setupZonaSlider();
+
+    // Ajustar bounds al total
+    var pts=datos.map(function(d){return[parseFloat(d.latitud),parseFloat(d.longitud)];});
+    if(fitMap){
+        var bounds=L.latLngBounds(pts);
         if(zonaCircle) bounds.extend(zonaCircle.getBounds());
         mapaZona.fitBounds(bounds,{padding:[40,40]});
     }
 }
 
+function limpiarCapasZona(){
+    if(window.zonaCircles){window.zonaCircles.forEach(function(c){mapaZona.removeLayer(c);});window.zonaCircles=[];}
+    if(window.zonaPolylines){window.zonaPolylines.forEach(function(pl){mapaZona.removeLayer(pl);});window.zonaPolylines=[];}
+    if(zonaSliderMarker){mapaZona.removeLayer(zonaSliderMarker);zonaSliderMarker=null;}
+}
+
+function renderZonaBase(){
+    limpiarCapasZona();
+    var puntosPorVehiculo={};
+    window.zonaDatos.forEach(function(d){
+        var veh=d.vehiculo||'V1';
+        var col=colorVehiculo(veh);
+        var p=[parseFloat(d.latitud),parseFloat(d.longitud)];
+        if(!puntosPorVehiculo[veh]) puntosPorVehiculo[veh]=[];
+        puntosPorVehiculo[veh].push(p);
+        var fh=extraerFechaHora(d.timestamp_gps||d.fecha_recepcion);
+        var c=L.circleMarker(p,{radius:5,color:col,fillColor:col,fillOpacity:0.7,weight:1.5}).addTo(mapaZona);
+        c.bindPopup('<strong>'+esc(veh)+'</strong><br>'+fh.fecha+'<br>'+fh.hora);
+        window.zonaCircles.push(c);
+    });
+    Object.keys(puntosPorVehiculo).forEach(function(veh){
+        var col=colorVehiculo(veh);
+        var puntos=puntosPorVehiculo[veh];
+        var pl=L.polyline([],{color:col,weight:4,opacity:0.85}).addTo(mapaZona);
+        window.zonaPolylines.push(pl);
+        var puntosRuta=[];
+        for(var i=0;i<puntos.length;i++){
+            if(puntosRuta.length===0||distanciaM(puntosRuta[puntosRuta.length-1],puntos[i])>30)
+                puntosRuta.push(puntos[i]);
+        }
+        if(puntosRuta.length>=2) osrmParaVehiculo(pl,puntosRuta,col);
+        else if(puntosRuta.length===1) pl.setLatLngs(puntosRuta);
+    });
+}
+
+function setupZonaSlider(){
+    var veh=document.getElementById('zonaVehSel').value;
+    window.zonaFiltrados=veh
+        ? window.zonaDatos.filter(function(d){return (d.vehiculo||'V1')===veh;})
+        : window.zonaDatos;
+    var slider=document.getElementById('zonaSlider');
+    slider.min=0;
+    slider.max=Math.max(0,window.zonaFiltrados.length-1);
+    slider.value=slider.max;
+    document.getElementById('zonaSliderCard').style.display=window.zonaFiltrados.length>0?'block':'none';
+    if(window.zonaFiltrados.length>0) renderZonaAt(window.zonaFiltrados.length-1);
+}
+
+function onZonaVehChange(){setupZonaSlider();}
+
+function onZonaSlider(){
+    renderZonaAt(parseInt(document.getElementById('zonaSlider').value));
+}
+
+function renderZonaAt(idx){
+    if(!window.zonaFiltrados||!window.zonaFiltrados.length) return;
+    if(zonaSliderMarker){mapaZona.removeLayer(zonaSliderMarker);zonaSliderMarker=null;}
+    var cur=window.zonaFiltrados[idx];
+    var veh=cur.vehiculo||'V1';
+    var col=colorVehiculo(veh);
+    var p=[parseFloat(cur.latitud),parseFloat(cur.longitud)];
+    var fh=extraerFechaHora(cur.timestamp_gps||cur.fecha_recepcion);
+    zonaSliderMarker=L.circleMarker(p,{radius:10,color:'#fff',fillColor:col,fillOpacity:1,weight:3}).addTo(mapaZona);
+    zonaSliderMarker.bindPopup('<strong>'+esc(veh)+'</strong><br>'+fh.fecha+'<br>'+fh.hora);
+    document.getElementById('zonaSliderLabel').textContent=(idx+1)+'/'+window.zonaFiltrados.length;
+    document.getElementById('zonaSliderInfo').textContent=veh+' · '+fh.hora;
+}
+
 function limpiarZona(){
     if(zonaMarcador&&mapaZona){mapaZona.removeLayer(zonaMarcador);zonaMarcador=null;}
     if(zonaCircle&&mapaZona){mapaZona.removeLayer(zonaCircle);zonaCircle=null;}
-    if(window.zonaCircles){window.zonaCircles.forEach(function(c){mapaZona.removeLayer(c);});window.zonaCircles=[];}
-    if(zonaPolyline) zonaPolyline.setLatLngs([]);
+    limpiarCapasZona();
+    window.zonaDatos=[];
+    window.zonaFiltrados=[];
+    document.getElementById('zonaSliderCard').style.display='none';
+    document.getElementById('zonaVehSel').innerHTML='<option value="">Todos los vehículos</option>';
     zonaCenter=null;
     document.getElementById('zonaLat').textContent='---';
     document.getElementById('zonaLon').textContent='---';
