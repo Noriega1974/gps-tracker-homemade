@@ -1076,19 +1076,6 @@ var basePath = (function(){
     return match ? match[1] : '/';
 })();
 
-// Cargar ultimo punto de cada vehiculo al iniciar (real-time)
-fetch(basePath + 'api/ultimo-por-vehiculo').then(function(r){return r.json();}).then(function(data){
-    if(Array.isArray(data)&&data.length>0){
-        data.forEach(function(d){
-            var p=[parseFloat(d.latitud),parseFloat(d.longitud)];
-            ultimoPunto=p;
-            actualizarGPS(d);
-            actualizarMapa(d.latitud,d.longitud,d.vehiculo||'V1');
-        });
-        if(ultimoPunto) mapa.setView(ultimoPunto,15);
-    }
-}).catch(function(){});
-
 function limpiarRuta(){
     for(var vid in vehiculosRT){
         var v=vehiculosRT[vid];
@@ -1128,20 +1115,6 @@ function setStatus(on){
     var b=document.getElementById('statusBadge'),t=document.getElementById('statusText');
     if(on){b.className='status-badge on';t.textContent='Conectado';}
     else{b.className='status-badge off';t.textContent='Desconectado';}
-}
-
-function conectarWS(){
-    var ws=new WebSocket((location.protocol==='https:'?'wss:':'ws:')+'//'+location.host);
-    ws.onopen=function(){setStatus(true);};
-    ws.onmessage=function(e){
-        var msg=JSON.parse(e.data);
-        if(msg.type==='nueva_ubicacion'){
-            actualizarGPS(msg.data);
-            actualizarMapa(msg.data.latitud,msg.data.longitud,msg.data.vehiculo||'V1');
-        }
-    };
-    ws.onerror=function(){ws.close();};
-    ws.onclose=function(){setStatus(false);setTimeout(conectarWS,3000);};
 }
 
 var obdUltimoConocido={};
@@ -1653,6 +1626,76 @@ function limpiarZona(){
     document.getElementById('zonaBody').innerHTML='';
     document.getElementById('zonaCount').textContent='Haz clic en el mapa para definir el centro';
     checkZonaLista();
+}
+
+/* ═══════════════════════════════════════════════════════
+   REAL-TIME — Fuente única de verdad: Base de Datos
+   El WebSocket actúa solo como trigger de notificación.
+   El dato que se pinta SIEMPRE viene de /api/ultimo-por-vehiculo.
+   Esto garantiza que todas las instancias muestren exactamente
+   lo mismo que está persistido en la DB compartida.
+   ═══════════════════════════════════════════════════════ */
+
+var rtPollingInterval = null;
+var rtPrimeraCarga = true;
+
+function fetchYPintarUltimos() {
+    fetch(basePath + 'api/ultimo-por-vehiculo')
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+            if (!Array.isArray(data) || data.length === 0) return;
+            data.forEach(function(d) {
+                actualizarGPS(d);
+                actualizarMapa(d.latitud, d.longitud, d.vehiculo || 'V1');
+            });
+            // Centrar el mapa solo en la primera carga
+            if (rtPrimeraCarga && ultimoPunto) {
+                mapa.setView(ultimoPunto, 15);
+                rtPrimeraCarga = false;
+            }
+        })
+        .catch(function(err) {
+            console.warn('[RT] Error consultando DB:', err);
+        });
+}
+
+function conectarWS() {
+    var ws = new WebSocket(
+        (location.protocol === 'https:' ? 'wss:' : 'ws:') + '//' + location.host
+    );
+
+    ws.onopen = function() {
+        setStatus(true);
+        // Pedir estado actual de la DB inmediatamente al conectar
+        fetchYPintarUltimos();
+        // Polling de respaldo cada 10s — garantiza consistencia aunque
+        // el WS pierda algún mensaje o haya múltiples instancias enviando
+        if (rtPollingInterval) clearInterval(rtPollingInterval);
+        rtPollingInterval = setInterval(fetchYPintarUltimos, 10000);
+    };
+
+    ws.onmessage = function(e) {
+        try {
+            var msg = JSON.parse(e.data);
+            // El WS notifica que llegó un dato nuevo → consultamos la DB
+            // No usamos msg.data directamente: la DB es la única fuente de verdad
+            if (msg.type === 'nueva_ubicacion') {
+                fetchYPintarUltimos();
+            }
+        } catch(err) {
+            console.warn('[RT] Error parseando mensaje WS:', err);
+        }
+    };
+
+    ws.onerror = function() { ws.close(); };
+
+    ws.onclose = function() {
+        setStatus(false);
+        if (rtPollingInterval) clearInterval(rtPollingInterval);
+        // Mientras se reconecta, mantener polling para no perder datos
+        rtPollingInterval = setInterval(fetchYPintarUltimos, 10000);
+        setTimeout(conectarWS, 3000);
+    };
 }
 
 conectarWS();
