@@ -916,14 +916,79 @@
         .wlc-btn:active { transform: translateY(0); }
         .wlc-btn-arrow { transition: transform 0.22s; display:inline-block; }
         .wlc-btn:hover .wlc-btn-arrow { transform: translateX(5px); }
-        .wlc-footer {
-            font-size: 12px;
-            color: var(--txt3);
-            margin-top: -8px;
+        /* how it works */
+        .wlc-how {
+            width: 100%;
+            background: var(--bg-card);
+            border: 1px solid var(--brd);
+            border-radius: 20px;
+            padding: 20px 20px 16px;
+            box-shadow: var(--sh-sm);
+            text-align: left;
+        }
+        .wlc-how-title {
+            font-size: 11px;
+            font-weight: 600;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            color: var(--txt2);
+            margin-bottom: 14px;
+        }
+        .wlc-steps {
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
+        }
+        .wlc-step {
+            display: flex;
+            align-items: flex-start;
+            gap: 12px;
+        }
+        .wlc-step-icon {
+            font-size: 20px;
+            flex-shrink: 0;
+            margin-top: 1px;
+        }
+        .wlc-step-text {
+            font-size: 13px;
+            line-height: 1.55;
+            color: var(--txt2);
+        }
+        .wlc-step-text strong {
+            display: block;
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--txt1);
+            margin-bottom: 2px;
+        }
+        /* notice */
+        .wlc-notice {
+            width: 100%;
+            display: flex;
+            align-items: flex-start;
+            gap: 12px;
+            background: rgba(240,179,138,0.12);
+            border: 1px solid rgba(240,179,138,0.35);
+            border-radius: 14px;
+            padding: 14px 16px;
+            font-size: 13px;
+            line-height: 1.55;
+            color: var(--txt2);
+            text-align: left;
+        }
+        .wlc-notice strong {
+            display: block;
+            font-weight: 600;
+            color: var(--txt1);
+            margin-bottom: 2px;
+        }
+        .wlc-notice-icon {
+            font-size: 18px;
+            flex-shrink: 0;
+            margin-top: 1px;
         }
         @media(max-width:480px){
-            .wlc-features { gap: 8px; }
-            .wlc-feat { font-size: 12px; padding: 6px 11px; }
+            .wlc-how { padding: 16px; }
         }
     </style>
 </head>
@@ -938,32 +1003,57 @@
 
         <div class="wlc-badge">
             <div class="wlc-badge-dot"></div>
-            Sistema activo
+            Proyecto en desarrollo · solo testers
         </div>
 
         <div class="wlc-icon">📡</div>
 
-        <div>
-            <div class="wlc-title">{{INSTANCE_NAME}}</div>
-        </div>
+        <div class="wlc-title">{{INSTANCE_NAME}}</div>
 
         <div class="wlc-subtitle">
-            Seguí la ubicación de tu vehículo en tiempo real, revisá el historial
-            de recorridos y consultá los datos del motor desde cualquier dispositivo.
+            Un sistema de rastreo GPS vehicular. Podés ver en un mapa dónde está el vehículo,
+            revisar los recorridos del día y consultar datos del motor como velocidad o temperatura.
         </div>
 
-        <div class="wlc-features">
-            <div class="wlc-feat"><span>🗺️</span> Mapa en vivo</div>
-            <div class="wlc-feat"><span>📍</span> Historial GPS</div>
-            <div class="wlc-feat"><span>📊</span> Datos OBD-II</div>
-            <div class="wlc-feat"><span>🔔</span> Alertas</div>
+        <div class="wlc-how">
+            <div class="wlc-how-title">¿Cómo funciona?</div>
+            <div class="wlc-steps">
+                <div class="wlc-step">
+                    <div class="wlc-step-icon">📱</div>
+                    <div class="wlc-step-text">
+                        <strong>App en el teléfono del conductor</strong>
+                        Una aplicación Android instalada en el celular envía la ubicación del vehículo cada pocos segundos.
+                    </div>
+                </div>
+                <div class="wlc-step">
+                    <div class="wlc-step-icon">☁️</div>
+                    <div class="wlc-step-text">
+                        <strong>Un servidor lo recibe y guarda</strong>
+                        Cada posición queda registrada con fecha, hora y datos del motor en tiempo real.
+                    </div>
+                </div>
+                <div class="wlc-step">
+                    <div class="wlc-step-icon">🌐</div>
+                    <div class="wlc-step-text">
+                        <strong>Vos lo ves acá, en el navegador</strong>
+                        El mapa se actualiza solo. Sin recargar la página, sin instalar nada.
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="wlc-notice">
+            <span class="wlc-notice-icon">⚠️</span>
+            <div>
+                <strong>La vista en tiempo real requiere la app Android.</strong>
+                La APK está disponible únicamente para testers autorizados. Si no la tenés instalada,
+                podés consultar el historial de recorridos y las estadísticas igual.
+            </div>
         </div>
 
         <button class="wlc-btn" onclick="dismissWelcome()">
-            Ingresar <span class="wlc-btn-arrow">→</span>
+            Entendido, ingresar <span class="wlc-btn-arrow">→</span>
         </button>
-
-        <div class="wlc-footer">Rastreador vehicular · actualizaciones en tiempo real</div>
 
     </div>
 </div>
