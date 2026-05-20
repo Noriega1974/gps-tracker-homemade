@@ -865,6 +865,14 @@
             line-height: 1.15;
             color: var(--txt1);
         }
+        .wlc-instance {
+            font-size: 12px;
+            font-family: 'JetBrains Mono', monospace;
+            font-weight: 500;
+            color: var(--txt3);
+            letter-spacing: 0.05em;
+            margin-top: -18px;
+        }
         .wlc-subtitle {
             font-size: 15px;
             line-height: 1.65;
@@ -995,8 +1003,8 @@
 <body>
 
 <!-- ═══════════════════════════════════════════
-     WELCOME SCREEN — se oculta al hacer clic en Entrar
-     sessionStorage evita que vuelva a aparecer en la misma sesión
+     WELCOME SCREEN — se muestra en cada carga de página.
+     Se cierra en memoria al hacer clic; recargando la página vuelve a aparecer.
 ════════════════════════════════════════════ -->
 <div id="welcome-screen">
     <div class="wlc-inner">
@@ -1008,11 +1016,13 @@
 
         <div class="wlc-icon">📡</div>
 
-        <div class="wlc-title">{{INSTANCE_NAME}}</div>
+        <div class="wlc-title">gpstracker</div>
+        <div class="wlc-instance">{{INSTANCE_NAME}}</div>
 
         <div class="wlc-subtitle">
-            Un sistema de rastreo GPS vehicular. Podés ver en un mapa dónde está el vehículo,
-            revisar los recorridos del día y consultar datos del motor como velocidad o temperatura.
+            GPSTracker es una plataforma de rastreo vehicular en tiempo real. Permite visualizar
+            la ubicación exacta de un vehículo en el mapa, consultar su historial de recorridos
+            y monitorear datos del motor desde cualquier navegador web.
         </div>
 
         <div class="wlc-how">
@@ -1021,22 +1031,42 @@
                 <div class="wlc-step">
                     <div class="wlc-step-icon">📱</div>
                     <div class="wlc-step-text">
-                        <strong>App en el teléfono del conductor</strong>
-                        Una aplicación Android instalada en el celular envía la ubicación del vehículo cada pocos segundos.
+                        <strong>Aplicación en el dispositivo del conductor</strong>
+                        Una app Android instalada en el teléfono envía la ubicación del vehículo cada pocos segundos a través de internet.
                     </div>
                 </div>
                 <div class="wlc-step">
                     <div class="wlc-step-icon">☁️</div>
                     <div class="wlc-step-text">
-                        <strong>Un servidor lo recibe y guarda</strong>
-                        Cada posición queda registrada con fecha, hora y datos del motor en tiempo real.
+                        <strong>El servidor recibe y registra cada posición</strong>
+                        Cada coordenada queda almacenada con fecha, hora y datos del motor para su consulta posterior.
                     </div>
                 </div>
                 <div class="wlc-step">
                     <div class="wlc-step-icon">🌐</div>
                     <div class="wlc-step-text">
-                        <strong>Vos lo ves acá, en el navegador</strong>
-                        El mapa se actualiza solo. Sin recargar la página, sin instalar nada.
+                        <strong>Visualización en el navegador</strong>
+                        El mapa se actualiza automáticamente. No es necesario recargar la página ni instalar ningún programa.
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="wlc-how">
+            <div class="wlc-how-title">Herramientas disponibles</div>
+            <div class="wlc-steps">
+                <div class="wlc-step">
+                    <div class="wlc-step-icon">🗺️</div>
+                    <div class="wlc-step-text">
+                        <strong>Histórico de recorridos</strong>
+                        Seleccione una fecha y hora de inicio y fin para consultar la ruta exacta del vehículo en ese período, incluyendo paradas y velocidades registradas.
+                    </div>
+                </div>
+                <div class="wlc-step">
+                    <div class="wlc-step-icon">🎯</div>
+                    <div class="wlc-step-text">
+                        <strong>Filtro por zona</strong>
+                        Delimite un área geográfica en el mapa. El sistema detecta y notifica automáticamente cada vez que el vehículo ingresa o sale de ese perímetro.
                     </div>
                 </div>
             </div>
@@ -1045,9 +1075,8 @@
         <div class="wlc-notice">
             <span class="wlc-notice-icon">⚠️</span>
             <div>
-                <strong>La vista en tiempo real requiere la app Android.</strong>
-                La APK está disponible únicamente para testers autorizados. Si no la tenés instalada,
-                podés consultar el historial de recorridos y las estadísticas igual.
+                <strong>La vista en tiempo real requiere la aplicación Android.</strong>
+                La APK está disponible únicamente para testers autorizados. El historial de recorridos y las estadísticas son accesibles sin ella.
             </div>
         </div>
 
@@ -1986,22 +2015,14 @@ function conectarWS() {
 conectarWS();
 
 // ── Welcome screen ──────────────────────────────
+// Se muestra en cada carga. Al hacer clic se cierra solo en memoria;
+// al recargar la página vuelve a aparecer.
 function dismissWelcome() {
     const ws = document.getElementById('welcome-screen');
     if (!ws) return;
     ws.classList.add('hiding');
     setTimeout(() => ws.remove(), 520);
-    try { sessionStorage.setItem('gps_welcomed', '1'); } catch(e){}
 }
-
-(function() {
-    try {
-        if (sessionStorage.getItem('gps_welcomed') === '1') {
-            const ws = document.getElementById('welcome-screen');
-            if (ws) ws.remove();
-        }
-    } catch(e){}
-})();
 </script>
 </body>
 </html>
