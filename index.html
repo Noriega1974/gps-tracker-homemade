@@ -770,9 +770,204 @@
             .view-title{padding-bottom:14px;}
             .view-title-text{font-size:20px;}
         }
+
+        /* ══════════ WELCOME SCREEN ══════════ */
+        #welcome-screen {
+            position: fixed;
+            inset: 0;
+            z-index: 9999;
+            background: var(--bg1);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 32px 20px;
+            overflow: hidden;
+            transition: opacity 0.5s ease, transform 0.5s ease;
+        }
+        #welcome-screen.hiding {
+            opacity: 0;
+            transform: scale(1.02);
+            pointer-events: none;
+        }
+        /* blobs decorativos propios */
+        #welcome-screen::before {
+            content:'';
+            position:absolute;
+            width:600px;height:600px;
+            background:radial-gradient(circle, var(--glow-1), transparent 65%);
+            top:-180px;right:-160px;
+            border-radius:50%;
+            filter:blur(80px);
+            opacity:0.6;
+            pointer-events:none;
+        }
+        #welcome-screen::after {
+            content:'';
+            position:absolute;
+            width:500px;height:500px;
+            background:radial-gradient(circle, var(--glow-2), transparent 65%);
+            bottom:-160px;left:-120px;
+            border-radius:50%;
+            filter:blur(80px);
+            opacity:0.5;
+            pointer-events:none;
+        }
+        .wlc-inner {
+            position: relative;
+            z-index: 1;
+            width: 100%;
+            max-width: 520px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 28px;
+            text-align: center;
+        }
+        .wlc-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            background: var(--accent-lt);
+            border: 1px solid var(--accent-border);
+            border-radius: 100px;
+            padding: 6px 16px;
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--accent);
+            letter-spacing: 0.06em;
+            text-transform: uppercase;
+        }
+        .wlc-badge-dot {
+            width: 7px; height: 7px;
+            border-radius: 50%;
+            background: var(--accent);
+            animation: wlcPulse 2s ease-in-out infinite;
+        }
+        @keyframes wlcPulse {
+            0%,100%{opacity:1;transform:scale(1);}
+            50%{opacity:0.4;transform:scale(0.75);}
+        }
+        .wlc-icon {
+            font-size: 64px;
+            line-height: 1;
+            filter: drop-shadow(0 6px 18px rgba(127,184,176,0.45));
+            animation: wlcFloat 4s ease-in-out infinite;
+        }
+        @keyframes wlcFloat {
+            0%,100%{transform:translateY(0);}
+            50%{transform:translateY(-8px);}
+        }
+        .wlc-title {
+            font-size: clamp(26px, 5vw, 38px);
+            font-weight: 700;
+            letter-spacing: -0.025em;
+            line-height: 1.15;
+            color: var(--txt1);
+        }
+        .wlc-subtitle {
+            font-size: 15px;
+            line-height: 1.65;
+            color: var(--txt2);
+            max-width: 420px;
+        }
+        .wlc-features {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+        .wlc-feat {
+            display: flex;
+            align-items: center;
+            gap: 7px;
+            background: var(--bg-card);
+            border: 1px solid var(--brd);
+            border-radius: 100px;
+            padding: 7px 14px;
+            font-size: 13px;
+            font-weight: 500;
+            color: var(--txt1);
+            box-shadow: var(--sh-sm);
+        }
+        .wlc-feat span { font-size: 15px; }
+        .wlc-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            background: var(--accent);
+            color: #fff;
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 16px;
+            font-weight: 600;
+            border: none;
+            border-radius: 16px;
+            padding: 15px 36px;
+            cursor: pointer;
+            letter-spacing: -0.01em;
+            box-shadow: 0 4px 20px rgba(127,184,176,0.45);
+            transition: background 0.22s, transform 0.22s, box-shadow 0.22s;
+        }
+        .wlc-btn:hover {
+            background: var(--accent-h);
+            transform: translateY(-3px);
+            box-shadow: 0 8px 28px rgba(127,184,176,0.55);
+        }
+        .wlc-btn:active { transform: translateY(0); }
+        .wlc-btn-arrow { transition: transform 0.22s; display:inline-block; }
+        .wlc-btn:hover .wlc-btn-arrow { transform: translateX(5px); }
+        .wlc-footer {
+            font-size: 12px;
+            color: var(--txt3);
+            margin-top: -8px;
+        }
+        @media(max-width:480px){
+            .wlc-features { gap: 8px; }
+            .wlc-feat { font-size: 12px; padding: 6px 11px; }
+        }
     </style>
 </head>
 <body>
+
+<!-- ═══════════════════════════════════════════
+     WELCOME SCREEN — se oculta al hacer clic en Entrar
+     sessionStorage evita que vuelva a aparecer en la misma sesión
+════════════════════════════════════════════ -->
+<div id="welcome-screen">
+    <div class="wlc-inner">
+
+        <div class="wlc-badge">
+            <div class="wlc-badge-dot"></div>
+            Sistema activo
+        </div>
+
+        <div class="wlc-icon">📡</div>
+
+        <div>
+            <div class="wlc-title">{{INSTANCE_NAME}}</div>
+        </div>
+
+        <div class="wlc-subtitle">
+            Seguí la ubicación de tu vehículo en tiempo real, revisá el historial
+            de recorridos y consultá los datos del motor desde cualquier dispositivo.
+        </div>
+
+        <div class="wlc-features">
+            <div class="wlc-feat"><span>🗺️</span> Mapa en vivo</div>
+            <div class="wlc-feat"><span>📍</span> Historial GPS</div>
+            <div class="wlc-feat"><span>📊</span> Datos OBD-II</div>
+            <div class="wlc-feat"><span>🔔</span> Alertas</div>
+        </div>
+
+        <button class="wlc-btn" onclick="dismissWelcome()">
+            Ingresar <span class="wlc-btn-arrow">→</span>
+        </button>
+
+        <div class="wlc-footer">Rastreador vehicular · actualizaciones en tiempo real</div>
+
+    </div>
+</div>
+
 <button class="hamburger" onclick="toggleSidebar()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" width="22" height="22"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg></button>
 <div class="bg-blob-3"></div>
 <div class="overlay" id="overlay" onclick="toggleSidebar()"></div>
@@ -1699,6 +1894,24 @@ function conectarWS() {
 }
 
 conectarWS();
+
+// ── Welcome screen ──────────────────────────────
+function dismissWelcome() {
+    const ws = document.getElementById('welcome-screen');
+    if (!ws) return;
+    ws.classList.add('hiding');
+    setTimeout(() => ws.remove(), 520);
+    try { sessionStorage.setItem('gps_welcomed', '1'); } catch(e){}
+}
+
+(function() {
+    try {
+        if (sessionStorage.getItem('gps_welcomed') === '1') {
+            const ws = document.getElementById('welcome-screen');
+            if (ws) ws.remove();
+        }
+    } catch(e){}
+})();
 </script>
 </body>
 </html>
