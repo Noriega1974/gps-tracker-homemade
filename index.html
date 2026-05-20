@@ -780,9 +780,9 @@
             display: flex;
             flex-direction: column;
             align-items: center;
-            justify-content: center;
-            padding: 32px 20px;
-            overflow: hidden;
+            padding: 48px 20px 56px;
+            overflow-y: auto;
+            overflow-x: hidden;
             transition: opacity 0.5s ease, transform 0.5s ease;
         }
         #welcome-screen.hiding {
@@ -995,6 +995,10 @@
             flex-shrink: 0;
             margin-top: 1px;
         }
+        .wlc-notice-info {
+            background: var(--accent-lt);
+            border-color: var(--accent-border);
+        }
         @media(max-width:480px){
             .wlc-how { padding: 16px; }
         }
@@ -1069,6 +1073,14 @@
                         Delimite un área geográfica en el mapa. El sistema detecta y notifica automáticamente cada vez que el vehículo ingresa o sale de ese perímetro.
                     </div>
                 </div>
+            </div>
+        </div>
+
+        <div class="wlc-notice wlc-notice-info">
+            <span class="wlc-notice-icon">🔗</span>
+            <div>
+                <strong>Rastreadores de respaldo</strong>
+                En el menú lateral izquierdo encontrará enlaces a los demás nodos del sistema. Si la página actual no responde, puede acceder a cualquiera de ellos para consultar la información desde otro servidor.
             </div>
         </div>
 
