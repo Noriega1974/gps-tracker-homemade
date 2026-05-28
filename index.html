@@ -769,6 +769,18 @@
             #mapa,#mapaHist,#mapaZona{height:340px;}
             .view-title{padding-bottom:14px;}
             .view-title-text{font-size:20px;}
+            .filter-bar{flex-direction:column;align-items:stretch;}
+            .filter-group{width:100%;}
+            .filter-group select{width:100%;box-sizing:border-box;}
+            .filter-btn{width:100%;}
+        }
+        @media(max-width:480px){
+            .card{padding:14px;}
+            #mapa,#mapaHist,#mapaZona{height:260px;}
+            .gps-item{padding:10px 12px;min-height:64px;}
+            .gps-item-value{font-size:13px;}
+            .replay-info{display:none;}
+            .radio-row{flex-wrap:wrap;}
         }
 
         /* ══════════ WELCOME SCREEN ══════════ */
@@ -1000,7 +1012,7 @@
             border-color: var(--accent-border);
         }
         @media(max-width:480px){
-            .wlc-how { padding: 16px; }
+            .wlc-how{padding:16px;}
         }
     </style>
 </head>
@@ -1672,7 +1684,7 @@ function renderHistorico(datos){
 
     var todosLosPuntos=[];
     Object.keys(porVehiculo).forEach(function(vid){
-        var puntos=porVehiculo[vid];
+        var puntos=porVehiculo[vid].slice().reverse();
         var color=colorVehiculo(vid);
         todosLosPuntos=todosLosPuntos.concat(puntos);
 
