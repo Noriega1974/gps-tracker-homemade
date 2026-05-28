@@ -1697,15 +1697,8 @@ function renderHistorico(datos){
             window.histCircles.push(c);
         });
 
-        var poly=L.polyline([],{color:color,weight:5,opacity:0.85}).addTo(mapaHist);
+        var poly=L.polyline(puntos,{color:color,weight:5,opacity:0.85}).addTo(mapaHist);
         window.histVehiclePolylines.push(poly);
-
-        var puntosRuta=[];
-        for(var i=0;i<puntos.length;i++){
-            if(puntosRuta.length===0||distanciaM(puntosRuta[puntosRuta.length-1],puntos[i])>30)
-                puntosRuta.push(puntos[i]);
-        }
-        if(puntosRuta.length>=2) osrmParaVehiculo(poly,puntosRuta,color);
     });
 
     if(todosLosPuntos.length===0) return;
